@@ -1,0 +1,97 @@
+html, body {  
+    margin: 0;
+    padding: 0;
+    background-color: var(--theme-bg-color) !important;
+}
+
+mat-toolbar {
+    background-color: transparent !important;
+    max-height: 60px;
+    position: fixed;
+    mat-icon {
+        color: white;
+    }
+}
+
+mat-sidenav-container {
+    background-color: transparent !important;
+    mat-sidenav {
+        background-color: var(--content-bg-color) !important;
+        color: var(--theme-txt-color) !important;
+        box-shadow: 0px 8px 10px -5px rgba(255, 255, 255, 0.2), 0px 16px 24px 2px rgba(255, 255, 255, 0.14), 0px 6px 30px 5px rgba(255, 255, 255, 0.12) !important;
+        max-height: 100vh;
+        width: 275px;
+        .sidebar-top-buttons {
+            margin-right: auto; 
+            margin-left:auto; 
+            display: flex;
+        }
+    }
+    .mat-drawer-backdrop {
+        background-color: transparent !important;
+    }
+    .graph-switch {
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        margin-right: auto;
+        label {
+            width:70px;
+            height:30px;
+            position: relative;
+            display: block;
+            background: #ebebeb;
+            border-radius: 200px;
+            border: solid 1px rgb(126, 126, 126);
+            cursor: pointer;
+        }
+        label:after {
+            content: "";
+            width:30px;
+            height:30px;
+            position: absolute;
+            top:-1px;
+            left:0;
+            background: gray;
+            border-radius: 180px;
+        }
+        input {
+            width: 0;
+            height: 0;
+            visibility: hidden;
+        }
+        input:checked + label:after {
+            left:68px;
+            transform: translateX(-100%);
+            background: gray;
+        }
+        label, label:after {
+            transition: 0.3s
+        }
+        label span {
+            position: absolute;
+            width: 100px;
+            top: 2px;
+            z-index: 100;
+        }
+        label .normal-tree {
+            left:7px;
+            color: white;
+            transition: 0.3s;
+        }
+        label .radial-tree {
+            left:50px;
+            color: black;
+            transition: 0.3s;
+        }
+      }
+}
+
+.selected-node {
+    border: solid 3px yellow;
+    fill: orange;
+}
+
+.node text {
+    font-size: 10px;
+}

@@ -1,0 +1,31 @@
+#navbar {
+    background-color: var(--theme-bg-color);
+    box-shadow: none;
+    #page-nav {
+        li {
+            margin: 10px;
+        }
+        a {
+            opacity: 0.6;
+            color: var(--theme-txt-color);
+            font-size: 18px;
+        }
+        #title-name {
+            opacity: 1;
+            font-weight: bold;
+            font-size: 22px;
+            color: var(--secondary-color);
+            margin-right: 3rem;
+        }
+        #selected {
+            border-bottom: 2px solid var(--theme-txt-color);
+            a {
+                opacity: 1;
+            }
+        }
+    }
+}
+
+#search-addon {
+    color: var(--theme-txt-color);
+}

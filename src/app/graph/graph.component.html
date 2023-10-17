@@ -1,0 +1,38 @@
+<mat-toolbar style="z-index: {{ sidenavOpened ? 1 : 10}}">
+  <button class="sidenav-open" type="button" mat-icon-button (click)="sidenav.open(); sidenavOpened = !sidenavOpened">
+    <mat-icon>menu</mat-icon>
+  </button>
+</mat-toolbar>
+
+<mat-sidenav-container hasBackdrop="false">
+    <mat-sidenav #sidenav mode="over" disableClose="true">
+      <div class="row justify-content-end sidebar-top-buttons">
+        <div style="display: flex; align-items: center; flex-direction: row-reverse; justify-content: flex-start;">
+          <button class="sidenav-close" type="button" mat-icon-button (click)="sidenav.close(); sidenavOpened = !sidenavOpened">
+            <mat-icon>close</mat-icon>
+          </button>
+          <div class="graph-switch">
+            <input type="checkbox" id="graph-switcher" (click)="switchGraphType()">
+            <label for="graph-switcher">
+              <span class="normal-tree">N</span>
+              <span class="radial-tree">R</span>
+            </label>
+          </div>
+        </div>
+      </div>      
+      <div class="row">
+        <p style="margin-left: 5%;"><b>{{selectedNodeData.id}}</b></p>
+        <ul class="list-group">
+          <li class="list-group-item"><b>Total BTC: </b></li>
+          <li class="list-group-item"><b>Datetime: </b></li>
+          <li class="list-group-item"><b>Indegree: </b></li>
+          <li class="list-group-item"><b>Outdegree: </b></li>
+        </ul>
+      </div>
+      <div class="row">
+        <button (click)="navigateToDetail()">View Details</button>
+      </div>
+    </mat-sidenav>
+    <div id="graphContainer" class="graph-container"></div>
+</mat-sidenav-container>
+
