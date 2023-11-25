@@ -1,4 +1,8 @@
-<mat-toolbar style="z-index: {{ sidenavOpened ? 1 : 10}}">
+<div *ngIf="graphLoading" class="graph-loading-spinner">
+  <mat-spinner></mat-spinner>
+</div>
+
+<mat-toolbar *ngIf="!graphLoading" style="z-index: {{ sidenavOpened ? 1 : 10}}">
   <button class="sidenav-open" type="button" mat-icon-button (click)="sidenav.open(); sidenavOpened = !sidenavOpened">
     <mat-icon>menu</mat-icon>
   </button>
@@ -19,18 +23,28 @@
             </label>
           </div>
         </div>
-      </div>      
-      <div class="row">
-        <p style="margin-left: 5%;"><b>{{selectedNodeData.id}}</b></p>
-        <ul class="list-group">
-          <li class="list-group-item"><b>Total BTC: </b></li>
-          <li class="list-group-item"><b>Datetime: </b></li>
-          <li class="list-group-item"><b>Indegree: </b></li>
-          <li class="list-group-item"><b>Outdegree: </b></li>
-        </ul>
+      </div>  
+      <div *ngIf="detailLoading" class="sidebar-loading-spinner">
+        <mat-spinner></mat-spinner>
       </div>
-      <div class="row">
-        <button (click)="navigateToDetail()">View Details</button>
+      <div *ngIf="!detailLoading">
+        <div class='not-selected' *ngIf="!selectedTransactionData">
+          <p><b>Click on a transaction to view its details</b></p>
+        </div>
+        <div class="row" *ngIf="selectedTransactionData">
+          <div class="section-header">
+            <p>Transaction Hash</p>
+          </div>
+          <p style="margin-left: 5%;"><b>{{selectedTransactionData.id}}</b></p>
+          <div class="section-header">
+            <p>Details</p>
+          </div>
+          <ul class="list-group" *ngIf="selectedTransactionData">
+            <li class="list-group-item" *ngFor="let item of selectedTransactionData.data | keyvalue">
+              <b>{{ item.key }}:</b> {{ item.value }}
+            </li>
+          </ul>
+        </div>
       </div>
     </mat-sidenav>
     <div id="graphContainer" class="graph-container"></div>

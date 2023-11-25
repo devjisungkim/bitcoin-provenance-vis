@@ -10,15 +10,15 @@
             color: var(--theme-txt-color);
             font-size: 18px;
         }
-        #title-name {
+        #web-name {
             opacity: 1;
             font-weight: bold;
+            color: var(--bitcoin-theme);
             font-size: 22px;
-            color: var(--secondary-color);
             margin-right: 3rem;
         }
         #selected {
-            border-bottom: 2px solid var(--theme-txt-color);
+            border-bottom: 2px solid var(--bitcoin-theme);
             a {
                 opacity: 1;
             }

@@ -9,7 +9,10 @@ import { Router } from '@angular/router';
 export class HomeComponent {
   constructor(private router: Router) { }
 
-  navigateToDetail() {
-    this.router.navigate(['/detail']);
+  navigateToGraph() {
+    const url = this.router.serializeUrl(
+      this.router.createUrlTree(['/graph'])
+    );
+    window.open(url, '_blank');
   }
 }

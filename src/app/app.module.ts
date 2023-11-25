@@ -18,6 +18,7 @@ import { MatSidenavModule } from '@angular/material/sidenav';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatListModule } from '@angular/material/list';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle'
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner'
 
 import { FlexLayoutModule } from '@angular/flex-layout';
 import { MdbAccordionModule } from 'mdb-angular-ui-kit/accordion';
@@ -35,6 +36,7 @@ import { MdbScrollspyModule } from 'mdb-angular-ui-kit/scrollspy';
 import { MdbTabsModule } from 'mdb-angular-ui-kit/tabs';
 import { MdbTooltipModule } from 'mdb-angular-ui-kit/tooltip';
 import { MdbValidationModule } from 'mdb-angular-ui-kit/validation';
+import { GraphTestComponent } from './graph-test/graph-test.component';
 
 @NgModule({
   declarations: [
@@ -43,6 +45,7 @@ import { MdbValidationModule } from 'mdb-angular-ui-kit/validation';
     HomeComponent,
     TransactionDetailComponent,
     FraudTransactionListComponent,
+    GraphTestComponent,
   ],
   imports: [
     BrowserModule,
@@ -72,7 +75,8 @@ import { MdbValidationModule } from 'mdb-angular-ui-kit/validation';
     MdbScrollspyModule,
     MdbTabsModule,
     MdbTooltipModule,
-    MdbValidationModule
+    MdbValidationModule,
+    MatProgressSpinnerModule
   ],
   providers: [],
   bootstrap: [AppComponent]

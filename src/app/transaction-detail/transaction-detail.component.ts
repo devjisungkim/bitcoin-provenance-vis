@@ -14,7 +14,6 @@ export class TransactionDetailComponent {
     const url = this.router.serializeUrl(
       this.router.createUrlTree(['/graph'])
     );
-  
     window.open(url, '_blank');
   }
 

@@ -2,13 +2,22 @@
     position: relative;
     padding-top: 10%;
     max-width: 50%;
-    margin: auto;
-    h1 {
-        color: var(--secondary-color);
+    #web-name {
+        color: var(--bitcoin-theme);
         font-weight: 1000;
+    }
+    mdb-form-control {
+        width: 100%;
     }
     input {
         background-color: #fff;
     }
 }
 
+img {
+    position: absolute;
+    top: 20%;
+    right: 10%;
+    width: 30%;
+    height: auto;
+}
