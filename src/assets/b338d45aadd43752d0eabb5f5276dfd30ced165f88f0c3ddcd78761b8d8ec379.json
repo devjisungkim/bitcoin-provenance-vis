@@ -1,0 +1,125 @@
+{
+  "id": "b338d45aadd43752d0eabb5f5276dfd30ced165f88f0c3ddcd78761b8d8ec379",
+  "children": [
+    {
+      "id": "86ea8b40b5908ce59bac05de0700f62cfa1e8692a957d9c61bc222e95585b817",
+      "amount": 50,
+      "children": [
+        {
+          "id": "c1c1db56184d35cabcbfa1e45fb06c6a6520219e650bc3ad97556a6329bf2536",
+          "amount": 1000,
+          "children": [
+            {
+              "id": "104e37e46d6daef5df1102bf08a69462094587d3a59bc1ffbb604168413be894",
+              "amount": 1000,
+              "children": [
+                {
+                  "id": "be24502aa0735add856bcc7eb39045852b32dd4a1cf0dc4e314bebfdd6feeb2c",
+                  "amount": 3000,
+                  "children": [
+                    {
+                      "id": "e241ca607a76d5c2987ebec37c4d8f606264f39ef5118792e18b9d11581eeda2",
+                      "amount": 3596
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "cdda157dbec4f4da8b49b0dc0ade5c447b56b7aa3266d90e3ad9680c78197320",
+              "amount": 1,
+              "children": [
+                {
+                  "id": "9b3d397e5755ecdb2c0e42539d70701dc995632cd55dde181b2df6eb626f0f91",
+                  "amount": 55,
+                  "children": [
+                    {
+                      "id": "d5cc5e8cee2213d858d0998fcac17ba698d80676f9985db1ace7a5a80c316b56",
+                      "amount": 0
+                    },
+                    {
+                      "id": "1a612c07013f1252d4c91d65ba6b6399b4504a842c7d33b2a9d0d1151c464b93",
+                      "amount": 2469
+                    }
+                  ]
+                },
+                {
+                  "id": "04eec9a9731a5f22672331a4e356f6bc0bd6bf0078d45cce9684c6f3cd116380",
+                  "amount": 0,
+                  "children": [
+                    {
+                      "id": "651d6fa430dbb645558e0f0eb908552397b6a06d0962dd9b6168b5864fa47dea",
+                      "amount": 0
+                    },
+                    {
+                      "id": "4b7b9da2fafc94a46716cc163db3ab6d356491d9c25c4cdad0c4d07afcf1dd07",
+                      "amount": 2
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "bf79be0ae6bdf54a5437abcad270b36624dd2f91be02f9fa46c5189d1502b727",
+          "amount": 50,
+          "children": [
+            {
+              "id": "ab7255d2c60770c9e9d7af6dcdefe1e6bd925fb75b76fd841e6cef7676fce911",
+              "amount": 1000,
+              "children": [
+                {
+                  "id": "8f8210694d3631a88ff410c573d80caf57db1d8af397bd47687aa4e4c1802464",
+                  "amount": 999,
+                  "children": [
+                    {
+                      "id": "3bda4918180fd55775a24580652f4c26d898d5840c7e71313491a05ef0b743d8",
+                      "amount": 400000
+                    }
+                  ]
+                },
+                {
+                  "id": "503d77cfffdb8239017797e79a5c30fe4bdd58d099d41c2394d140d61869ca01",
+                  "amount": 1,
+                  "children": [
+                    {
+                      "id": "03616a5d76508d45a0def171c29b3672714410c49648704eb766f2e74b4ed1fe",
+                      "amount": 106
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "dfe547f53913f65c7fa4bb048a83c93168095db838eff4407d9121e689345669",
+              "amount": 50,
+              "children": [
+                {
+                  "id": "4e671a7b921370078a701811f2d677fbcf22cb9df15d80079a9129d4147acb84",
+                  "amount": 20,
+                  "children": [
+                    {
+                      "id": "a09b763595bd439994a2de013588d296c6b5997e7dd5086d3429a28d3062c3fb",
+                      "amount": 1020
+                    }
+                  ]
+                },
+                {
+                  "id": "bf29b4788d09face79ae1c7550f85c153281fbf73cce533dc6163bfa3141d8c6",
+                  "amount": 230,
+                  "children": [
+                    {
+                      "id": "542089ffc758db4839277da7580e3f1310ee9126cf3b5b5a77d8678cbc9326d0",
+                      "amount": 230
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

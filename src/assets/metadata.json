@@ -1,0 +1,283 @@
+{
+  "metadata_array": [
+    {
+      "id": "1e6b2572ba028e84861b1968f0a8623a0d2b38397116058401a3fa94373698bc",
+      "data": {
+        "indegree": 0,
+        "outdegree": 1,
+        "total_btc": 50.0,
+        "is_malicious": 0
+      }
+    },
+    {
+      "id": "8734fd763db69cfc4a6b237a2427711d1a536933b9f020c4dc62e241e9176a4a",
+      "data": {
+        "indegree": 6,
+        "outdegree": 1,
+        "total_btc": 600.0,
+        "is_malicious": 0
+      }
+    },
+    {
+      "id": "3322a1ee39c544be1ba7758c4e7950a0742d5990a654fdb32726c62e030305b5",
+      "data": {
+        "indegree": 14,
+        "outdegree": 1,
+        "total_btc": 6000.0,
+        "is_malicious": 0
+      }
+    },
+    {
+      "id": "c89060bcc4a8880e4567a2c558efc78d67d2d22638bab1d63a1cdf96dc6ede1f",
+      "data": {
+        "indegree": 2,
+        "outdegree": 1,
+        "total_btc": 7100.0,
+        "is_malicious": 0
+      }
+    },
+    {
+      "id": "0d799726ed474d82e67e9e5187f0e3e557157e406b731c56e0bfa16564866d71",
+      "data": {
+        "indegree": 3,
+        "outdegree": 2,
+        "total_btc": 8000.0218848,
+        "is_malicious": 0
+      }
+    },
+    {
+      "id": "9731aaa2e406f4bf813b29682e23d92caab6baa182a7f827ad2e7fc0d34d3e8f",
+      "data": {
+        "indegree": 9,
+        "outdegree": 2,
+        "total_btc": 39.7818848,
+        "is_malicious": 0
+      }
+    },
+    {
+      "id": "481b2e21c0720e07a4307efacbe97a53cfa23148f9558e0c758e7a7e6a21e422",
+      "data": {
+        "indegree": 1,
+        "outdegree": 2,
+        "total_btc": 8000.0,
+        "is_malicious": 0
+      }
+    },
+    {
+      "id": "b338d45aadd43752d0eabb5f5276dfd30ced165f88f0c3ddcd78761b8d8ec379",
+      "data": {
+        "indegree": 0,
+        "outdegree": 1,
+        "total_btc": 50.0,
+        "is_malicious": 0
+      }
+    },
+    {
+      "id": "86ea8b40b5908ce59bac05de0700f62cfa1e8692a957d9c61bc222e95585b817",
+      "data": {
+        "indegree": 21,
+        "outdegree": 2,
+        "total_btc": 2100.0006723799997,
+        "is_malicious": 0
+      }
+    },
+    {
+      "id": "c1c1db56184d35cabcbfa1e45fb06c6a6520219e650bc3ad97556a6329bf2536",
+      "data": {
+        "indegree": 2,
+        "outdegree": 2,
+        "total_btc": 2001.83,
+        "is_malicious": 0
+      }
+    },
+    {
+      "id": "104e37e46d6daef5df1102bf08a69462094587d3a59bc1ffbb604168413be894",
+      "data": {
+        "indegree": 2,
+        "outdegree": 1,
+        "total_btc": 6000.0,
+        "is_malicious": 0
+      }
+    },
+    {
+      "id": "be24502aa0735add856bcc7eb39045852b32dd4a1cf0dc4e314bebfdd6feeb2c",
+      "data": {
+        "indegree": 5,
+        "outdegree": 1,
+        "total_btc": 7191.08,
+        "is_malicious": 0
+      }
+    },
+    {
+      "id": "e241ca607a76d5c2987ebec37c4d8f606264f39ef5118792e18b9d11581eeda2",
+      "data": {
+        "indegree": 2,
+        "outdegree": 2,
+        "total_btc": 8079.96,
+        "is_malicious": 0
+      }
+    },
+    {
+      "id": "cdda157dbec4f4da8b49b0dc0ade5c447b56b7aa3266d90e3ad9680c78197320",
+      "data": {
+        "indegree": 3,
+        "outdegree": 2,
+        "total_btc": 110.47,
+        "is_malicious": 0
+      }
+    },
+    {
+      "id": "9b3d397e5755ecdb2c0e42539d70701dc995632cd55dde181b2df6eb626f0f91",
+      "data": {
+        "indegree": 5,
+        "outdegree": 2,
+        "total_btc": 4939.219999999999,
+        "is_malicious": 0
+      }
+    },
+    {
+      "id": "d5cc5e8cee2213d858d0998fcac17ba698d80676f9985db1ace7a5a80c316b56",
+      "data": {
+        "indegree": 4,
+        "outdegree": 2,
+        "total_btc": 10.04,
+        "is_malicious": 0
+      }
+    },
+    {
+      "id": "1a612c07013f1252d4c91d65ba6b6399b4504a842c7d33b2a9d0d1151c464b93",
+      "data": {
+        "indegree": 1,
+        "outdegree": 1,
+        "total_btc": 2470.2799999999997,
+        "is_malicious": 0
+      }
+    },
+    {
+      "id": "04eec9a9731a5f22672331a4e356f6bc0bd6bf0078d45cce9684c6f3cd116380",
+      "data": {
+        "indegree": 3,
+        "outdegree": 2,
+        "total_btc": 4.109999999999999,
+        "is_malicious": 0
+      }
+    },
+    {
+      "id": "651d6fa430dbb645558e0f0eb908552397b6a06d0962dd9b6168b5864fa47dea",
+      "data": {
+        "indegree": 2,
+        "outdegree": 2,
+        "total_btc": 300.09000000000003,
+        "is_malicious": 0
+      }
+    },
+    {
+      "id": "4b7b9da2fafc94a46716cc163db3ab6d356491d9c25c4cdad0c4d07afcf1dd07",
+      "data": {
+        "indegree": 13,
+        "outdegree": 1,
+        "total_btc": 1800.0,
+        "is_malicious": 0
+      }
+    },
+    {
+      "id": "bf79be0ae6bdf54a5437abcad270b36624dd2f91be02f9fa46c5189d1502b727",
+      "data": {
+        "indegree": 21,
+        "outdegree": 2,
+        "total_btc": 2099.96067238,
+        "is_malicious": 0
+      }
+    },
+    {
+      "id": "ab7255d2c60770c9e9d7af6dcdefe1e6bd925fb75b76fd841e6cef7676fce911",
+      "data": {
+        "indegree": 1,
+        "outdegree": 2,
+        "total_btc": 1999.99,
+        "is_malicious": 0
+      }
+    },
+    {
+      "id": "8f8210694d3631a88ff410c573d80caf57db1d8af397bd47687aa4e4c1802464",
+      "data": {
+        "indegree": 181,
+        "outdegree": 1,
+        "total_btc": 800000.3300000001,
+        "is_malicious": 0
+      }
+    },
+    {
+      "id": "3bda4918180fd55775a24580652f4c26d898d5840c7e71313491a05ef0b743d8",
+      "data": {
+        "indegree": 1,
+        "outdegree": 2,
+        "total_btc": 800000.0,
+        "is_malicious": 0
+      }
+    },
+    {
+      "id": "503d77cfffdb8239017797e79a5c30fe4bdd58d099d41c2394d140d61869ca01",
+      "data": {
+        "indegree": 5,
+        "outdegree": 1,
+        "total_btc": 212.10000000000002,
+        "is_malicious": 0
+      }
+    },
+    {
+      "id": "03616a5d76508d45a0def171c29b3672714410c49648704eb766f2e74b4ed1fe",
+      "data": {
+        "indegree": 9,
+        "outdegree": 1,
+        "total_btc": 1908.54,
+        "is_malicious": 0
+      }
+    },
+    {
+      "id": "dfe547f53913f65c7fa4bb048a83c93168095db838eff4407d9121e689345669",
+      "data": {
+        "indegree": 5,
+        "outdegree": 2,
+        "total_btc": 499.92067238000004,
+        "is_malicious": 0
+      }
+    },
+    {
+      "id": "4e671a7b921370078a701811f2d677fbcf22cb9df15d80079a9129d4147acb84",
+      "data": {
+        "indegree": 22,
+        "outdegree": 1,
+        "total_btc": 2039.93533619,
+        "is_malicious": 0
+      }
+    },
+    {
+      "id": "a09b763595bd439994a2de013588d296c6b5997e7dd5086d3429a28d3062c3fb",
+      "data": {
+        "indegree": 3,
+        "outdegree": 1,
+        "total_btc": 2040.04,
+        "is_malicious": 0
+      }
+    },
+    {
+      "id": "bf29b4788d09face79ae1c7550f85c153281fbf73cce533dc6163bfa3141d8c6",
+      "data": {
+        "indegree": 2,
+        "outdegree": 1,
+        "total_btc": 460.01,
+        "is_malicious": 0
+      }
+    },
+    {
+      "id": "542089ffc758db4839277da7580e3f1310ee9126cf3b5b5a77d8678cbc9326d0",
+      "data": {
+        "indegree": 1,
+        "outdegree": 1,
+        "total_btc": 460.0,
+        "is_malicious": 0
+      }
+    }
+  ]
+}

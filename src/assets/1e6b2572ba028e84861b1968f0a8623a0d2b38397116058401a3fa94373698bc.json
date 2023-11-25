@@ -1,0 +1,37 @@
+{
+  "id": "1e6b2572ba028e84861b1968f0a8623a0d2b38397116058401a3fa94373698bc",
+  "children": [
+    {
+      "id": "8734fd763db69cfc4a6b237a2427711d1a536933b9f020c4dc62e241e9176a4a",
+      "amount": 50,
+      "children": [
+        {
+          "id": "3322a1ee39c544be1ba7758c4e7950a0742d5990a654fdb32726c62e030305b5",
+          "amount": 300,
+          "children": [
+            {
+              "id": "c89060bcc4a8880e4567a2c558efc78d67d2d22638bab1d63a1cdf96dc6ede1f",
+              "amount": 3000,
+              "children": [
+                {
+                  "id": "0d799726ed474d82e67e9e5187f0e3e557157e406b731c56e0bfa16564866d71",
+                  "amount": 3500,
+                  "children": [
+                    {
+                      "id": "9731aaa2e406f4bf813b29682e23d92caab6baa182a7f827ad2e7fc0d34d3e8f",
+                      "amount": 0
+                    },
+                    {
+                      "id": "481b2e21c0720e07a4307efacbe97a53cfa23148f9558e0c758e7a7e6a21e422",
+                      "amount": 4000
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
