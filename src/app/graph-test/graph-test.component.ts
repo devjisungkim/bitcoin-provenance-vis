@@ -1,5 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import * as d3 from 'd3';
+import { parse, stringify } from 'flatted';
 
 @Component({
   selector: 'app-graph-test',
@@ -23,6 +24,7 @@ export class GraphTestComponent implements OnInit {
   private gNode: any;
   private expandedCluster: any;
   private reservedOriginalTreeData: any;
+  private newChildren: any;
 
   constructor(
   ) {  }
@@ -71,7 +73,20 @@ export class GraphTestComponent implements OnInit {
                 }
               ]
             }]
-          }]
+          },
+          {
+            id: 'cluster3',
+            transactions: [{
+              id: 3,
+              amount: 90,
+              children: [ 
+                {
+                  id: 5,
+                  amount: 34,
+                }
+              ]
+            }]
+          }],
         }
       ]
     }
@@ -83,7 +98,7 @@ export class GraphTestComponent implements OnInit {
     this.width = this.screenWidth - this.margin.left - this.margin.right;
     this.height = this.screenHeight - this.margin.top - this.margin.bottom;
 
-    this.root = d3.hierarchy(data, (d:any) => d.children);
+    this.root = d3.hierarchy(data);
 
     this.tree = d3.tree().size([this.width, this.height])
 
@@ -138,14 +153,14 @@ export class GraphTestComponent implements OnInit {
 
         const [mouseX, mouseY] = event.transform.invert(d3.pointer(event, this.svg.node()));
 
-        if (currentZoomScale >= 0.85 && !this.expandedCluster) {
+        if (currentZoomScale >= 0.6 && !this.expandedCluster) {
           const nearestNode = findNearestCluster(this.root, mouseX, mouseY);
-          this.expandedCluster = nearestNode
-
+          this.expandedCluster = parse(stringify(nearestNode))
+          
           if (typeof nearestNode.data.id === 'string' && nearestNode.data.id.includes('cluster')) {
-            const transactionsInsideCluster = nearestNode.data.transactions
+            const transactionsInsideCluster = JSON.parse(JSON.stringify(nearestNode.data.transactions))
             const subsequentClusters = nearestNode.children
-  
+
             // calculate the depth of tree
             const getDepth = (node:any): number => {
               if (!node.children || node.children.length === 0) {
@@ -154,7 +169,9 @@ export class GraphTestComponent implements OnInit {
                   return 1 + Math.max(...node.children.map(getDepth));
               }
             };
+
             const innerDepth = getDepth({ children: transactionsInsideCluster });
+            let hiddenNodeAdded = false;
   
             function releaseFromCluster(node:any, depth:number, parent:any) {
               node.depth = depth
@@ -164,41 +181,120 @@ export class GraphTestComponent implements OnInit {
               if (node.children && node.children.length > 0) {
                 node.children.forEach((child:any) => releaseFromCluster(child, depth + 1, node));
               } else {
-                let nextParent = node
-                const depth = nearestNode.depth + innerDepth - 1
+
                 if (subsequentClusters) {
+                  const depth = nearestNode.depth + innerDepth; // - 1
+
+                  // Update subsequent nodes
+                  let nextParent:any = null
+                  let previousHiddenParent:boolean = true
+                  let previousOriginalDepth = -1
+                  let previousUpdatedCluster: any
+            
                   const subsequentClustersClone = subsequentClusters.map((cluster:any, index:number) => {
-                    const clonedCluster = { ...cluster };
-                    clonedCluster.parent = nextParent;
-                    clonedCluster.depth = depth + index;
+                    const clonedCluster = { ...cluster }
+                    if (index > 0 && nextParent) {
+                      if (clonedCluster.depth === previousOriginalDepth) {
+                        clonedCluster.parent = previousUpdatedCluster.parent
+                        clonedCluster.data.hiddenParent = previousHiddenParent
+                        clonedCluster.depth = previousUpdatedCluster.depth
+                      } else {
+                        previousOriginalDepth = clonedCluster.depth
+                        clonedCluster.parent = nextParent
+                        clonedCluster.data.hiddenParent = false
+                        clonedCluster.depth = depth + index
+                      }
+                    } else {
+                      previousOriginalDepth = clonedCluster.depth
+                      clonedCluster.parent = nextParent
+                      clonedCluster.data.hiddenParent = previousHiddenParent
+                      clonedCluster.depth = depth + index
+                    }
+                    previousUpdatedCluster = clonedCluster
                     nextParent = clonedCluster;
                     return clonedCluster;
                   });
-                  node.children = subsequentClustersClone;
+
+                  const hiddenNodeIndices = subsequentClustersClone.reduce((indices:any, cluster:any, index:any) => {
+                    if (cluster.data.hiddenParent === true) {
+                      indices.push(index);
+                    }
+                    return indices;
+                  }, []);
+
+                  if (!hiddenNodeAdded) {
+                    const hiddenNodeChildren = {
+                      id: 'hidden',
+                      depth: depth - 1,
+                      data: {
+                        id: 'hidden',
+                        children: subsequentClustersClone
+                      },
+                      parent: node,
+                      children: subsequentClustersClone
+                    };
+
+                    for (let i in hiddenNodeIndices) {
+                      subsequentClustersClone[i].parent = hiddenNodeChildren
+                    }
+
+                    node.children = [hiddenNodeChildren];
+                    hiddenNodeAdded = true
+
+                  } else {
+                    const hiddenNodeNoChildren = {
+                      id: 'hidden',
+                      depth: depth - 1,
+                      data: {
+                        id: 'hidden',
+                      },
+                      parent: node
+                    };
+                    
+                    node.children = [hiddenNodeNoChildren];
+                  }
                 }
               }
               return node
             }
   
-            const newChildren = transactionsInsideCluster.map((transaction:any) => {
+            this.newChildren = transactionsInsideCluster.map((transaction:any) => {
               return releaseFromCluster(transaction, nearestNode.depth, nearestNode.parent);
             });
             
-            nearestNode.parent.children = newChildren
-            nearestNode.parent.data.children = newChildren
+            const indexOfNearestNode = nearestNode.parent.children.indexOf(nearestNode);
+            nearestNode.parent.children.splice(indexOfNearestNode, this.newChildren.length, ...this.newChildren);
+            nearestNode.parent.data.children = nearestNode.parent.children;
+            console.log(parse(stringify(nearestNode)))
             this.updateTreeGraph(nearestNode);
           }
-        } else if (currentZoomScale < 0.85 && this.expandedCluster) {
+        } else if (currentZoomScale < 0.6 && this.expandedCluster) {
+          const originalParent = this.expandedCluster.parent;
+          const index = originalParent.children.indexOf(this.expandedCluster);
+
+          let visited = false
           this.nodes.forEach((d:any) => {
-            // COMPARE PARENT
-            if (d.depth > 0 && d.parent.data.id === this.expandedCluster.parent.data.id) {
-              d.parent.children = [this.expandedCluster]
-              d.parent.data.children =  [this.expandedCluster]
+            if (d.depth > 0 && d.parent.data.id === originalParent.data.id && !visited) {
+              for (let i = index; i < index + this.newChildren.length; i++) {
+                if (i === index) {
+                  d.parent.children[i] = this.expandedCluster
+                  d.parent.data.children[i] = this.expandedCluster
+                } else {
+                  d.parent.children[i] = null
+                  d.parent.data.children[i] = null
+                }
+              }
+              d.parent.children = d.parent.children.filter((child:any) => child !== null);
+              d.parent.data.children = d.parent.data.children.filter((child:any) => child !== null);
+
+              visited = true
             }
-          })
-          const nearestNode = this.expandedCluster
+          });
+          
+          const returnNode = this.expandedCluster
           this.expandedCluster = undefined
-          this.updateTreeGraph(nearestNode)
+
+          this.updateTreeGraph(returnNode)
         }
         this.g.attr("transform", event.transform);
       });
@@ -218,52 +314,48 @@ export class GraphTestComponent implements OnInit {
       }
     });
 
-    this.reservedOriginalTreeData = this.root
     this.updateTreeGraph(this.root)
   }
 
   updateTreeGraph(source:any) {
-    this.tree(this.root)
-
+    console.log(parse(stringify(this.root)))
+    this.tree(this.root);
+    
     this.links = this.root.descendants().slice(1);
     this.nodes = this.root.descendants();
+    
+    if (!this.reservedOriginalTreeData) {
+      this.reservedOriginalTreeData = parse(stringify(this.root.descendants()));
+    };
 
     //console.log("Root", this.root)
-    console.log("Nodes", this.nodes)
-    console.log("ExpandedCluster", this.expandedCluster)
-    //console.log(this.root.descendants().reverse()) // reverse order of nodes
+    console.log("Nodes", this.nodes);
+    //console.log("ExpandedCluster", this.expandedCluster)
 
-    let postExpandedNodes = false
+    let postExpandedNodes = false;
+
+    let averageX = 0;
+    const hiddenNodes = this.nodes.filter((d:any) => typeof d.data.id === 'string' && d.data.id === 'hidden');
+    if (hiddenNodes.length > 0) {
+      averageX = hiddenNodes.reduce((sum:any, node:any) => sum + node.x, 0) / hiddenNodes.length;
+    };
+
+    const positionDifference = this.reservedOriginalTreeData[0].x - this.root.x
 
     this.nodes.forEach((d:any) => {
-      d.y = d.depth * 180;
-      
-      if (typeof d.data.id === 'number') {
-        const centreX = d.parent ? d.parent.x : this.width / 2;
-        const nodesAtDepth = this.nodes.filter((node:any) => node.depth === d.depth);
-        const numNodesAtDepth = nodesAtDepth.length;
-        const index = nodesAtDepth.indexOf(d);
-        const spacing = this.width / (numNodesAtDepth + 1);
-        d.x = centreX + (index - (numNodesAtDepth - 1) / 2) * spacing;
-        // skip root
-        if (d.depth > 0) {
-          postExpandedNodes = true
-        }
+      d.y = d.depth * 180;  
+      d.x += positionDifference
+
+      if (typeof d.data.id === 'string' && d.data.id === 'hidden') {
+        d.x = averageX + positionDifference
+        postExpandedNodes = true
       } else if (postExpandedNodes && typeof d.data.id === 'string' && d.data.id.includes('cluster')) {
-        if (this.expandedCluster && this.expandedCluster.children) {
-          this.expandedCluster.children.forEach((child:any) => {
-            if (child.data.id == d.data.id) {
-              d.x = child.x
-            }
-          });
-        }
-      } else {
-        this.reservedOriginalTreeData.children.forEach((child:any) => {
-          if (child.data.id == d.data.id) {
-            d.x = child.x
+        this.reservedOriginalTreeData.forEach((cluster:any) => {
+          if (cluster.data.id === d.data.id) {
+            d.x = cluster.x
           }
         })
-      }
+      };
     });
 
     let left = this.root;
@@ -298,10 +390,7 @@ export class GraphTestComponent implements OnInit {
       .attr('class', 'node')
       .attr("transform", function() {
         return "translate(" + source.y0 + "," + source.x0 + ")";
-      })
-      .on("click", function(event:any, d:any) {
-        console.log(d.data.id, d.amount)
-      })
+      });
       
     nodeEnter
       .attr("r", 1e-6)
@@ -377,6 +466,10 @@ export class GraphTestComponent implements OnInit {
       .duration(this.duration)
       .attr('transform', function(d:any) {
         return 'translate(' + d.y + ',' + d.x + ')';
+      })
+      .style('opacity', function(d:any) {
+        // Check if the node has the id 'hidden' and make it invisible
+        return d.data && d.data.id === 'hidden' ? 0 : 1;
       });
 
     const nodeExit = node
@@ -420,7 +513,10 @@ export class GraphTestComponent implements OnInit {
         return Math.max(1, Math.min(weight, 15))
         */
        return 1
-      });
+      })
+      .style('stroke', ((d:any) => {
+        return d.data && typeof d.data.id === 'number' || d.data.id === 'hidden' ? 'var(--bitcoin-theme)' : 'white';
+      }))
 
     const linkExit = link
       .exit()
