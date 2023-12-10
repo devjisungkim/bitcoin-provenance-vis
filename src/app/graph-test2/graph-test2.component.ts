@@ -2,28 +2,56 @@ import { Component, OnInit } from '@angular/core';
 import * as d3 from 'd3';
 import { parse, stringify } from 'flatted';
 
+type TreeComponent = {
+  destTree: any;
+  destRoot: any;
+  destLinks: any;
+  destNodes: any;
+  gDest: any;
+  gDestNode: any;
+  gDestLink: any;
+  originalDestTreeData: any;
+  originTree: any;
+  originRoot: any;
+  originLinks: any;
+  originNodes: any;
+  gOrigin: any;
+  gOriginNode: any;
+  gOriginLink: any;
+  originalOriginTreeData: any;
+};
+
 @Component({
-  selector: 'app-graph-test',
-  templateUrl: './graph-test.component.html',
-  styleUrls: ['./graph-test.component.scss']
+  selector: 'app-graph-test2',
+  templateUrl: './graph-test2.component.html',
+  styleUrls: ['./graph-test2.component.scss']
 })
-export class GraphTestComponent implements OnInit {
+export class GraphTest2Component implements OnInit {
   private svg: any;
   private g: any;
-  private tree: any;
-  private root: any
-  private nodes: any;
-  private links: any;
+  private gDest: any;
+  private gOrigin: any;
+  private destTree: any;
+  private originTree: any;
+  private destRoot: any;
+  private originRoot: any;
+  private destNodes: any;
+  private originNodes: any;
+  private destLinks: any;
+  private originLinks: any;
+  private gDestLink: any;
+  private gDestNode: any;
+  private gOriginLink: any;
+  private gOriginNode: any;
   private margin = { top: 20, right: 90, bottom: 30, left: 90 };
   private screenWidth: any;
   private screenHeight: any;
   private width: any;
   private height: any;
   private duration = 750;  
-  private gLink: any;
-  private gNode: any;
   private expandedCluster: any;
-  private reservedOriginalTreeData: any;
+  private originalOriginTreeData: any;
+  private originalDestTreeData: any;
   private newChildren: any;
   private zoom: any;
   private currentZoomScale = 0.4;
@@ -92,39 +120,32 @@ export class GraphTestComponent implements OnInit {
           }],
         }
       ]
-    }
+    };
 
-    this.initializeGraph(data)
-  }
-
-  initializeGraph(data:any) {
     this.width = this.screenWidth - this.margin.left - this.margin.right;
     this.height = this.screenHeight - this.margin.top - this.margin.bottom;
 
-    this.root = d3.hierarchy(data);
-
-    this.tree = d3.tree().size([this.width, this.height])
-
     this.svg = d3.selectAll('#graphContainer')
-    .append('svg')
-    .attr('width', this.screenWidth)
-    .attr('height', this.screenHeight)
-    .attr("style", "max-width: 100%; height: auto; user-select: none;");
-
+      .append('svg')
+      .attr('width', this.screenWidth)
+      .attr('height', this.screenHeight)
+      .attr("style", "max-width: 100%; height: auto; user-select: none;");
+    
     this.g = this.svg.append('g')
       .attr("transform", "translate(" + (this.width/2) + "," + (this.height/3) + ")");
     
-    this.gLink = this.g.append('g')
-      .attr("fill", "none")
-      .attr("stroke", "white")
-      .attr("stroke-opacity", 0.4)
-      .attr("stroke-width", 1.5);
+    const zoom = this.initializeZoomBehaviour()
 
-    this.gNode = this.g.append("g")
-      .attr("cursor", "pointer")
-      .attr("pointer-events", "all"); 
+    this.svg.call(zoom)
+      .call(zoom.transform, d3.zoomIdentity.translate(this.width/2, this.height/2).scale(0.4))
+      .on("dblclick.zoom", null);
+    
+    this.initializeTree(data, 'origin');
+    this.initializeTree(data, 'dest');
+  }
 
-    this.zoom = d3.zoom()
+  initializeZoomBehaviour() {
+    return d3.zoom()
       .scaleExtent([0.4, 2])
       .on("zoom", (event:any) => {
         this.currentZoomScale = event.transform.k
@@ -154,15 +175,20 @@ export class GraphTestComponent implements OnInit {
           return closestNode;
         }
 
+        let side: string;
         const [mouseX, mouseY] = this.currentMousePosition.length > 0 ? event.transform.invert(this.currentMousePosition) : event.transform.invert(d3.pointer(event, this.svg.node()))
-        if (this.currentZoomScale >= 0.6 && !this.expandedCluster) {
 
-          const nearestNode = findNearestCluster(this.root, mouseX, mouseY);
-          this.expandedCluster = parse(stringify(nearestNode))
+        if (this.currentZoomScale >= 0.6 && !this.expandedCluster) {
+          side = mouseX < 0 ? 'origin' : 'dest';
+          const root = `${side}Root` as keyof TreeComponent;
+          const nodes = `${side}Nodes` as keyof TreeComponent;
+
+          const nearestNode = findNearestCluster(this[root], mouseX, mouseY);
+          this.expandedCluster = parse(stringify(nearestNode));
           
           if (typeof nearestNode.data.id === 'string' && nearestNode.data.id.includes('cluster')) {
-            const transactionsInsideCluster = JSON.parse(JSON.stringify(nearestNode.data.transactions))
-            const subsequentClusters = nearestNode.children
+            const transactionsInsideCluster = JSON.parse(JSON.stringify(nearestNode.data.transactions));
+            const subsequentClusters = nearestNode.children;
 
             // calculate the depth of tree
             const getDepth = (node:any): number => {
@@ -269,7 +295,7 @@ export class GraphTestComponent implements OnInit {
             const nearestNodeIndex = nearestNode.parent.children.indexOf(nearestNode);
             let visited = false;
 
-            this.nodes.forEach((d:any) => {
+            this[nodes].forEach((d:any) => {
               if (d.data.id === nearestNodeParent.data.id && !visited) {
                 d.children.splice(nearestNodeIndex, 1, ...this.newChildren)
                 d.data.children.splice(nearestNodeIndex, 1, ...this.newChildren)
@@ -278,13 +304,17 @@ export class GraphTestComponent implements OnInit {
             });
 
             this.currentMousePosition = [];
-            this.updateTreeGraph(nearestNode);
+            this.updateTree(nearestNode, side);
           }
         } else if (this.currentZoomScale < 0.6 && this.expandedCluster) {
+          side = this.expandedCluster.y < 0 ? 'origin' : 'dest';
+          const nodes = `${side}Nodes` as keyof TreeComponent;
+
           const originalParent = this.expandedCluster.parent;
           const indexOfCluster = originalParent.children.indexOf(this.expandedCluster);
           let visited = false
-          this.nodes.forEach((d:any) => {
+
+          this[nodes].forEach((d:any) => {
             if (d.data.id === originalParent.data.id && !visited) {
               d.children.splice(indexOfCluster, this.newChildren.length, this.expandedCluster)
               visited = true
@@ -293,62 +323,117 @@ export class GraphTestComponent implements OnInit {
           const returnNode = this.expandedCluster;
           this.expandedCluster = undefined;
 
-          this.updateTreeGraph(returnNode)
+          this.updateTree(returnNode, side)
         }
         this.g.attr("transform", event.transform);
       });
+  }
 
-    this.svg.call(this.zoom)
-      .call(this.zoom.transform, d3.zoomIdentity.translate(0, this.height/2).scale(0.4))
-      .on("dblclick.zoom", null);
+  initializeTree(data: any, side: string) {
+    const tree = `${side}Tree` as keyof TreeComponent;
+    const root = `${side}Root` as keyof TreeComponent;
+    const g = `g${side.charAt(0).toUpperCase() + side.slice(1)}` as keyof TreeComponent;
+    const gNode = `g${side.charAt(0).toUpperCase() + side.slice(1)}Node` as keyof TreeComponent;
+    const gLink = `g${side.charAt(0).toUpperCase() + side.slice(1)}Link` as keyof TreeComponent;
 
-    this.root.x0 = 0;
-    this.root.y0 = 0;
+    this[root] = d3.hierarchy(data);
+    this[tree] = d3.tree().size([this.width, this.height])
+
+    this[g] = this.g.append('g')
+      //.attr("transform", "translate(" + (this.width/2) + "," + (this.height/3) + ")");
+    
+    this[gLink] = this[g].append("g")
+      .attr("cursor", "pointer")
+      .attr("pointer-events", "all"); 
+      
+    this[gNode] = this[g].append('g')
+      .attr("fill", "none")
+      .attr("stroke", "white")
+      .attr("stroke-opacity", 0.4)
+      .attr("stroke-width", 1.5);
+
+    this[root].x0 = 0;
+    this[root].y0 = 0;
 
     // Expand all nodes
-    this.root.descendants().forEach((d:any) => {
+    this[root].descendants().forEach((d:any) => {
       if (d._children) {
         d.children = d._children;
         d._children = null;
       }
     });
 
-    this.updateTreeGraph(this.root)
+    this.updateTree(this[root], side)
   }
 
-  updateTreeGraph(source:any) {
-    this.tree(this.root);
-    
-    this.links = this.root.descendants().slice(1);
-    this.nodes = this.root.descendants();
-    
-    if (!this.reservedOriginalTreeData) {
-      this.reservedOriginalTreeData = parse(stringify(this.root.descendants()));
-    };
+  updateTree(source:any, side: string) {
+    const tree = `${side}Tree` as keyof TreeComponent;
+    const root = `${side}Root` as keyof TreeComponent;
+    const links = `${side}Links` as keyof TreeComponent;
+    const nodes = `${side}Nodes` as keyof TreeComponent;
+    const gNode = `g${side.charAt(0).toUpperCase() + side.slice(1)}Node` as keyof TreeComponent;
+    const gLink = `g${side.charAt(0).toUpperCase() + side.slice(1)}Link` as keyof TreeComponent;
+    const originalTreeData = `original${side.charAt(0).toUpperCase() + side.slice(1)}TreeData` as keyof TreeComponent;
 
-    //console.log("Root", this.root)
-    //console.log("Nodes After Update", this.nodes);
+    this[tree](this[root]);
+
+    this[links] = this[root].descendants().slice(1);
+    this[nodes] = this[root].descendants();
+      
+    if (!this[originalTreeData]) {
+      this[originalTreeData] = parse(stringify(this[root].descendants()));
+    }
+
+    //console.log("Root", this[root])
+    //console.log("Nodes After Update", this[nodes]);
     //console.log("ExpandedCluster", this.expandedCluster)
 
     let postExpandedNodes = false;
 
     let averageX = 0;
-    const hiddenNodes = this.nodes.filter((d:any) => typeof d.data.id === 'string' && d.data.id === 'hidden');
+    let maxHiddenY = 0;
+    const hiddenNodes = this[nodes].filter((d:any) => typeof d.data.id === 'string' && d.data.id === 'hidden');
     if (hiddenNodes.length > 0) {
       averageX = hiddenNodes.reduce((sum:any, node:any) => sum + node.x, 0) / hiddenNodes.length;
     };
 
-    const positionDifference = this.reservedOriginalTreeData[0].x - this.root.x
+    const positionDifference = this[originalTreeData][0].x - this[root].x
 
-    this.nodes.forEach((d:any) => {
-      d.y = d.depth * 180
-      d.x += positionDifference
+    this[nodes].forEach((d:any) => {
+
+      if (d.parent && d.parent.children.length > 1 && typeof d.data.id === 'number') {
+         const midPoint = d.parent.children.length / 2;
+         const indexInParent = d.parent.children.indexOf(d);
+         const parentDiff = Math.abs(d.x - d.parent.x);
+         if (indexInParent > midPoint) {
+          if (Math.ceil(midPoint) === indexInParent) {
+            d.x += parentDiff;
+          } else {
+            d.x += parentDiff * 2;
+          };
+        } else if (indexInParent < midPoint) {
+          if (Math.floor(midPoint) === indexInParent) {
+            d.x -= parentDiff;
+          } else {
+            d.x -= parentDiff * 2;
+          };
+        };
+      };
+
+      if (d.depth > 0) {
+        const distanceY = d.parent && typeof d.data.id === 'number' ? 280 : 180;
+        d.y = d.parent.y + ((side === 'origin' ? -1 : 1) * distanceY);
+      }
+
+      d.x += positionDifference;
 
       if (typeof d.data.id === 'string' && d.data.id === 'hidden') {
-        d.x = averageX + positionDifference
+        if (Math.abs(maxHiddenY) < Math.abs(d.y)) {
+          maxHiddenY = d.y
+        }
         postExpandedNodes = true
       } else if (postExpandedNodes && typeof d.data.id === 'string' && d.data.id.includes('cluster')) {
-        this.reservedOriginalTreeData.forEach((cluster:any) => {
+        this[originalTreeData].forEach((cluster:any) => {
           if (cluster.data.id === d.data.id) {
             d.x = cluster.x
           }
@@ -356,10 +441,15 @@ export class GraphTestComponent implements OnInit {
       };
     });
 
-    let left = this.root;
-    let right = this.root;
+    hiddenNodes.forEach((d: any) => {
+      d.y = maxHiddenY + (side === 'origin' ? -1 : 1) * 100
+      d.x = averageX + positionDifference
+    })
 
-    this.root.eachBefore((node: any) => {
+    let left = this[root];
+    let right = this[root];
+
+    this[root].eachBefore((node: any) => {
       if (node.x < left.x) left = node;
       if (node.x > right.x) right = node;
     });
@@ -372,15 +462,7 @@ export class GraphTestComponent implements OnInit {
       .attr("viewBox", [-this.margin.left, left.x - this.margin.top, this.width, height])
       .tween("resize", window.ResizeObserver ? null : () => () => this.svg.dispatch("toggle"));
 
-    const node = this.gNode.selectAll("g.node").data(this.nodes, (d:any) => d.id || (d.id = ++i));
-
-    node.select('rect')
-      .attr('stroke', (d:any) => {
-        if (d.data && d.data.id && typeof d.data.id === 'string' && d.data.id.includes('cluster')) {
-            return 'cyan';
-        }
-        return 'var(--bitcoin-theme)';
-      });
+    const node = this[gNode].selectAll("g.node").data(this[nodes], (d:any) => d.id || (d.id = ++i));
 
     const nodeEnter = node
       .enter()
@@ -389,7 +471,10 @@ export class GraphTestComponent implements OnInit {
       .attr("transform", function() {
         return "translate(" + source.y0 + "," + source.x0 + ")";
       })
-      .on('dblclick', (event:any, d:any) => {
+      .on("click", (event: any, d:any) => {
+        console.log(d)
+      })
+ /*     .on('dblclick', (event:any, d:any) => {
         if (d.depth > 0 && this.currentZoomScale < 0.6) {
           const [x, y] = d3.pointer(event, this.svg.node())
           const translateX = this.width / 2 - y;
@@ -399,22 +484,53 @@ export class GraphTestComponent implements OnInit {
           this.svg.transition().duration(this.duration)
             .call(this.zoom.transform, d3.zoomIdentity.translate(translateX, translateY).scale(0.6));
         }
-      })
-      .on('click', function(event:any, d:any) {
-        console.log(d)
+      });
+*/
+    const nodeUpdate = nodeEnter.merge(node)
+
+    nodeUpdate
+      .transition(transition)
+      .duration(this.duration)
+      .attr('transform', function(d:any) {
+        return 'translate(' +  d.y + ',' + d.x + ')';
       })
 
-    nodeEnter
+    const hiddenNodesUpdate = nodeUpdate.filter(function(d :any) {
+      return d.data && d.data.id === 'hidden'
+    })
+
+    hiddenNodesUpdate
+      .style("opacity", 0)
+
+    // Cluster and root nodes
+    const clusterNodesUpdate = nodeUpdate.filter(function (d: any) {
+      return typeof d.data.id === 'string' || d.depth === 0;
+    })
+
+    clusterNodesUpdate.selectAll("#transactionRect, #transactionText, #transactionFullScreenIcon")
+      .transition(transition)
+      .duration(this.duration)
+      .remove();
+
+    // Transaction nodes
+    const transactionNodesUpdate = nodeUpdate.filter(function (d: any) {
+        return d.depth > 0 && typeof d.data.id === 'number';
+    });
+
+    transactionNodesUpdate.selectAll("#clusterRect, #clusterText")
+      .transition(transition)
+      .duration(this.duration)
+      .remove();
+
+    clusterNodesUpdate
       .attr("r", 1e-6)
       .style("fill", function(d:any) {
         return d.parent ? "var(--theme-bg-color)" : "red";
       });
 
-    nodeEnter
-      .filter(function (d: any) {
-        return typeof d.data.id === 'string' || d.depth === 0;
-      })
+    clusterNodesUpdate
       .append("rect")
+      .attr("id", "clusterRect")
       .attr("rx", function(d:any) {
         if (d.data && d.data.id) {
           if (typeof d.data.id === 'string' && d.data.id.includes('cluster')) {
@@ -462,8 +578,9 @@ export class GraphTestComponent implements OnInit {
         return d.parent ? 20 : 20;
       });    
 
-    nodeEnter
+    clusterNodesUpdate
       .append("text")
+      .attr("id", "clusterText")
       .style("fill", "white")
       .attr("dy", ".35em")
       .attr("x", function(d:any) {
@@ -474,41 +591,26 @@ export class GraphTestComponent implements OnInit {
         return d.parent ? "" : "T";
       });
 
-    const nodeUpdate = nodeEnter.merge(node)
-
-    nodeUpdate
-      .transition(transition)
-      .duration(this.duration)
-      .attr('transform', function(d:any) {
-        return 'translate(' + d.y + ',' + d.x + ')';
-      })
-      .style('opacity', function(d:any) {
-        // Check if the node has the id 'hidden' and make it invisible
-        return d.data && d.data.id === 'hidden' ? 0 : 1;
-      });
-
-    nodeUpdate
-      .filter(function (d: any) {
-        return d.depth > 0 && typeof d.data.id === 'number';
-      })
+    transactionNodesUpdate
       .append("rect")
+      .attr("id", "transactionRect")
       .attr("rx", 6)
       .attr("ry", 6)
       .attr("stroke-width", 1)
       .attr("stroke", 'var(--bitcoin-theme)')
       .attr("width", 150) 
       .attr("height", 200)
+      .attr("x", -75)
       .attr('y', -100)
       .style("fill", "var(--content-bg-color)")
       
     // Transaction info summary
-    nodeUpdate
-      .filter(function (d: any) {
-        return d.depth > 0 && typeof d.data.id === 'number';
-      })
+    transactionNodesUpdate
       .append("foreignObject")
+      .attr("id", "transactionText")
       .attr("width", 150)
       .attr("height", 200)
+      .attr("x", -75)
       .attr('y', -100)
       .append("xhtml:div")
       .style("width", "100%")
@@ -522,13 +624,12 @@ export class GraphTestComponent implements OnInit {
       });
 
     // Full screen icon on the top right
-    nodeUpdate
-      .filter(function (d: any) {
-        return d.depth > 0 && typeof d.data.id === 'number';
-      })
+    transactionNodesUpdate
       .append("foreignObject")
+      .attr("id", "transactionFullScreenIcon")
       .attr("width", 150)
       .attr("height", 200)
+      .attr("x", -75)
       .attr('y', -100)
       .append("xhtml:div")
       .style("width", "100%")
@@ -557,7 +658,7 @@ export class GraphTestComponent implements OnInit {
       })
       .remove();
 
-    const link = this.gLink.selectAll('path.link').data(this.links, (d:any) => d.id);
+    const link = this[gLink].selectAll('path.link').data(this[links], (d: any) => d.id);
 
     const linkEnter = link
       .enter()
@@ -569,7 +670,7 @@ export class GraphTestComponent implements OnInit {
           y: source.y0 
         };
         return this.diagonal(o, o);
-      });
+      })
 
     const linkUpdate = linkEnter.merge(link);
 
@@ -592,6 +693,7 @@ export class GraphTestComponent implements OnInit {
       .style('stroke', ((d:any) => {
         return d.data && typeof d.data.id === 'number' || d.data.id === 'hidden' ? 'var(--bitcoin-theme)' : 'white';
       }))
+      .attr('fill', 'none')
 
     const linkExit = link
       .exit()
@@ -606,35 +708,72 @@ export class GraphTestComponent implements OnInit {
       })
       .remove()
 
-    const linkText = this.gLink.selectAll('text.link-text')
-      .data(this.root.links(), (d:any) => d.id);
+    const linkTextAndArrow = this[gLink].selectAll('.link-text-group')
+      .data(this[root].links(), (d:any) => d.id)
 
-    const linkTextEnter = linkText.enter()
-      .append('text')
-      .attr('class', 'link-text')
+    const linkTextAndArrowEnter = linkTextAndArrow.enter()
+      .append("g")
+      .attr("class", "link-text-group")
       .attr("transform", "translate(" + source.y0 + "," + source.x0 + ")")
+
+    linkTextAndArrowEnter.append("text")
+      .attr("class", "link-text")
       .attr("dy", ".35em")
       .attr("text-anchor", "middle")
+      .style("fill", "white")
+      .style("text-shadow", "0 0 10px rgba(255, 255, 255, 0.8)")
       .text(function(d:any) {
         return d.target.data.amount;
       });
 
-    const linkTextUpdate = linkTextEnter.merge(linkText)
+    linkTextAndArrowEnter.append("text")
+      .attr("class", "fa")
+      .attr("dy", "0.5em")
+      .attr("text-anchor", "middle")
+      .style("fill", "white")
+      .text('\uf106')
+      .style("font-size", "22px")
+      .style("transform", (d: any) => {
+        let rotateDeg = 0;
+        let translateY = -30;
+        // Left side
+        if (d.target.y < 0) {
+          if (d.source.x > d.target.x) {
+            // Head downwards
+            rotateDeg = 180;
+          } else if (d.source.x === d.target.x) {
+            // Head right
+            rotateDeg = 90;
+          }
+        } else {
+          if (d.source.x < d.target.x) {
+            // Head upwards
+            rotateDeg = 180;
+          } else if (d.source.x === d.target.x) {
+            // Head right
+            rotateDeg = 90;
+          }
+        }
+        return `rotate(${rotateDeg}deg) translateY(${translateY}px)`;
+      });
 
-    linkTextUpdate
+    const linkTextAndArrowUpdate = linkTextAndArrowEnter.merge(linkTextAndArrow)
+
+    linkTextAndArrowUpdate
       .transition(transition)
       .duration(this.duration)
       .attr("transform", function (d:any) {
         return "translate(" + (d.source.y + d.target.y) / 2 + "," + (d.source.x + d.target.x) / 2 + ")";
       });
 
-    linkText.exit()
+    linkTextAndArrow.exit()
       .transition(transition)
       .duration(this.duration)
+      .style("opacity", 0)
       .attr("transform", "translate(" + source.y + "," + source.x + ")")
       .remove();
   
-    this.nodes.forEach((d:any) => {
+    this[nodes].forEach((d:any) => {
         d.x0 = d.x;
         d.y0 = d.y;
     });

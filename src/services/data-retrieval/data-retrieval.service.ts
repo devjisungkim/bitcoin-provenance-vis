@@ -13,15 +13,19 @@ export class DataRetrievalService {
     private http: HttpClient
     ) { }
 
-  getHierarchyData(id:string): Observable<JSON> {
-    const jsonURL = this.url + id + '.json'
+  getDestinationDummy(id: string): Observable<JSON> {
+    const jsonURL = this.url + id + 'dest.json'
     return this.http.get<JSON>(jsonURL);
   }
 
-  getTransactionMetadata(id:string): Observable<JSON> {
+  getTransactionMetadata(id: string): Observable<JSON> {
     return this.http.get<any>(this.url + 'metadata.json').pipe(
       map(metadata => metadata.metadata_array.find((entry:any) => entry.id === id))
     );
   }
 
+  getOriginDummy(id: string): Observable<JSON> {
+    const jsonURL = this.url + id + 'origin.json'
+    return this.http.get<JSON>(jsonURL);
+  }
 }

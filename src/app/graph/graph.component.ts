@@ -1,5 +1,5 @@
 import { Component, OnInit, ViewEncapsulation, HostListener, Renderer2 } from '@angular/core';
-import { Router, ActivatedRoute } from '@angular/router';
+import { ActivatedRoute } from '@angular/router';
 import * as d3 from 'd3';
 import { DataRetrievalService } from 'src/services/data-retrieval/data-retrieval.service';
 
@@ -43,11 +43,11 @@ export class GraphComponent implements OnInit {
     this.screenHeight = window.innerHeight; 
     this.activatedRoute.params.subscribe(params => { 
       this.graphLoading = true;
-      this.dataRetrieval.getHierarchyData(params['id']).subscribe((data: any) => {
+      this.dataRetrieval.getDestinationDummy(params['id']).subscribe((data: any) => {
         setTimeout(() => {
           this.graphLoading = false;
           this.initializeTree(data);
-        }, 1500);
+        }, 500);
       });
     });
   }
@@ -121,12 +121,6 @@ export class GraphComponent implements OnInit {
     this.links = this.root.descendants().slice(1);
     this.nodes = this.root.descendants();
 
-    console.log(this.width)
-    const fakeNodes = this.root.descendants().reverse()
-    fakeNodes.forEach((d:any) => {
-      console.log(d.depth, d.x)
-    })
-
     this.nodes.forEach((d:any) => {
       d.y = d.depth * 180;
     });
@@ -146,8 +140,7 @@ export class GraphComponent implements OnInit {
       .attr("viewBox", [-this.margin.left, left.x - this.margin.top, this.width, height])
       .tween("resize", window.ResizeObserver ? null : () => () => this.svg.dispatch("toggle"));
 
-    let i = 0;
-    const node = this.gNode.selectAll("g.node").data(this.nodes, (d:any) => d.id || (d.id = ++i));
+    const node = this.gNode.selectAll("g.node").data(this.nodes, (d:any) => d.data.id);
 
     const nodeEnter = node
       .enter()
@@ -248,25 +241,7 @@ export class GraphComponent implements OnInit {
         };
         return this.diagonal(o, o);
       });
-
-    linkEnter
-      .append("rect")
-      .attr("class", "link-hover-boundary")
-      .attr("height", 20) 
-      .attr("width", 180)
-      .attr("fill", "red")
-      .style("z-index", 1)
-
-    linkEnter
-      .on('mouseover', (event:any, d:any) => {
-        this.showAmountAboveLink(d);
-        d3.select(event.currentTarget).classed('hovered', true);
-      })
-      .on('mouseout', (event:any, d:any) => {
-        this.showAmountAboveLink(null);
-        d3.select(event.currentTarget).classed('hovered', false);
-      });
-
+    
     const linkUpdate = linkEnter.merge(link)
 
     linkUpdate
@@ -292,6 +267,34 @@ export class GraphComponent implements OnInit {
         return this.diagonal(o, o);
       })
       .remove()
+
+    const linkText = this.gLink.selectAll('text.link-text')
+      .data(this.root.links(), (d:any) => d.id);
+
+    const linkTextEnter = linkText.enter()
+      .append('text')
+      .attr('class', 'link-text')
+      .attr("transform", "translate(" + source.y0 + "," + source.x0 + ")")
+      .attr("dy", ".35em")
+      .attr("text-anchor", "middle")
+      .text(function(d:any) {
+          return d.target.data.amount;
+      });
+
+    const linkTextUpdate = linkTextEnter.merge(linkText)
+
+    linkTextUpdate
+      .transition(transition)
+      .duration(this.duration)
+      .attr("transform", function (d:any) {
+        return "translate(" + (d.source.y + d.target.y) / 2 + "," + (d.source.x + d.target.x) / 2 + ")";
+      });
+
+    linkText.exit()
+      .transition(transition)
+      .duration(this.duration)
+      .attr("transform", "translate(" + source.y + "," + source.x + ")")
+      .remove();
   
     this.nodes.forEach((d:any) => {
         d.x0 = d.x;
@@ -371,21 +374,6 @@ export class GraphComponent implements OnInit {
       .filter((d: any) => d === node)
       .select('rect')
       .attr('class', 'selected-node')
-  }
-
-  showAmountAboveLink(link:any) {
-    d3.selectAll('.selected-link').remove();
-    
-    if (link) { 
-      const x = link.x
-      const y = link.y
-
-      this.g.append('text')
-        .attr('class', 'selected-link')
-        .attr('transform', `translate(${x},${y})`)
-        .attr('text-anchor', 'middle')
-        .text(`Amount Transferred: ${link.data.amount}`);
-    }
   }
 
   diagonal(s:any, t:any) {
