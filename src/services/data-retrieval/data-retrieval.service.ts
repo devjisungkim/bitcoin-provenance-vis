@@ -14,7 +14,7 @@ export class DataRetrievalService {
     ) { }
 
   getDestinationDummy(id: string): Observable<JSON> {
-    const jsonURL = this.url + id + 'dest.json'
+    const jsonURL = this.url + id + '_dest.json'
     return this.http.get<JSON>(jsonURL);
   }
 
@@ -25,7 +25,7 @@ export class DataRetrievalService {
   }
 
   getOriginDummy(id: string): Observable<JSON> {
-    const jsonURL = this.url + id + 'origin.json'
+    const jsonURL = this.url + id + '_origin.json'
     return this.http.get<JSON>(jsonURL);
   }
 }

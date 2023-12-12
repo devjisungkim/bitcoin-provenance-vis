@@ -53,9 +53,10 @@ export class GraphTest2Component implements OnInit {
   private originalOriginTreeData: any;
   private originalDestTreeData: any;
   private newChildren: any;
-  private zoom: any;
   private currentZoomScale = 0.4;
-  private currentMousePosition: number[] = []
+  private currentMousePosition: number[] = [];
+  private originGroupPosition: any;
+  private destGroupPosition: any;
 
   constructor(
   ) {  }
@@ -134,22 +135,61 @@ export class GraphTest2Component implements OnInit {
     this.g = this.svg.append('g')
       .attr("transform", "translate(" + (this.width/2) + "," + (this.height/3) + ")");
     
-    const zoom = this.initializeZoomBehaviour()
+    const zoom = this.initializeZoomDragBehaviour()
 
     this.svg.call(zoom)
       .call(zoom.transform, d3.zoomIdentity.translate(this.width/2, this.height/2).scale(0.4))
       .on("dblclick.zoom", null);
     
-    this.initializeTree(data, 'origin');
-    this.initializeTree(data, 'dest');
+    this.initializeTree(data, 'origin', true);
+    this.initializeTree(data, 'dest', true);
   }
 
-  initializeZoomBehaviour() {
+  initializeZoomDragBehaviour() {
     return d3.zoom()
       .scaleExtent([0.4, 2])
       .on("zoom", (event:any) => {
-        this.currentZoomScale = event.transform.k
+        this.currentZoomScale = event.transform.k;
+
+        function elementOutOfViewport(element: any, remove: boolean) {
+          const rect = element.getBoundingClientRect();
+          if (remove) {
+            return (
+              rect.bottom < 0 ||
+              rect.right < 0 ||
+              rect.top > (window.innerHeight || document.documentElement.clientHeight) ||
+              rect.left > (window.innerWidth || document.documentElement.clientWidth)
+            );
+          } else {
+            return (rect.left < 100 || rect.right > (window.innerWidth || document.documentElement.clientWidth) - 100);
+          }
+        }
+
+        if (!this.expandedCluster) {
+          // Remove tree if not in viewport
+          const originGroup = document.getElementById("origin-group");
+          const destGroup = document.getElementById("dest-group");
         
+          if (originGroup && elementOutOfViewport(originGroup, true)) {
+            this.gOrigin
+              .transition()
+              .duration(this.duration)
+              .remove();
+          } else if (!originGroup && destGroup && !elementOutOfViewport(destGroup, false)) {
+            this.initializeTree(null, 'origin', false)
+          }
+
+          if (destGroup && elementOutOfViewport(destGroup, true)) {
+            this.destGroupPosition = destGroup.getBoundingClientRect();
+            this.gDest
+              .transition()
+              .duration(this.duration)
+              .remove();
+          } else if (!destGroup && originGroup && !elementOutOfViewport(originGroup, false)) {
+            this.initializeTree(null, 'dest', false);
+          }
+        }
+
         function findNearestCluster(root: any, mouseX: number, mouseY: number):any {
           let closestNode = null;
           let closestDistance = Number.MAX_VALUE;
@@ -176,12 +216,23 @@ export class GraphTest2Component implements OnInit {
         }
 
         let side: string;
+        let oppositeSide: string;
         const [mouseX, mouseY] = this.currentMousePosition.length > 0 ? event.transform.invert(this.currentMousePosition) : event.transform.invert(d3.pointer(event, this.svg.node()))
 
         if (this.currentZoomScale >= 0.6 && !this.expandedCluster) {
           side = mouseX < 0 ? 'origin' : 'dest';
+
           const root = `${side}Root` as keyof TreeComponent;
           const nodes = `${side}Nodes` as keyof TreeComponent;
+
+          // Remove the opposite tree while other tree is focused (purpose: to reduce the number of nodes)
+          oppositeSide = mouseX > 0 ? 'origin' : 'dest';
+          const oppositeGroup = `g${oppositeSide.charAt(0).toUpperCase() + oppositeSide.slice(1)}` as keyof TreeComponent;
+          this[oppositeGroup]
+            .transition()
+            .duration(this.duration)
+            .style("opacity", 0)
+            .remove();
 
           const nearestNode = findNearestCluster(this[root], mouseX, mouseY);
           this.expandedCluster = parse(stringify(nearestNode));
@@ -308,6 +359,7 @@ export class GraphTest2Component implements OnInit {
           }
         } else if (this.currentZoomScale < 0.6 && this.expandedCluster) {
           side = this.expandedCluster.y < 0 ? 'origin' : 'dest';
+          oppositeSide = this.expandedCluster.y > 0 ? 'origin' : 'dest';
           const nodes = `${side}Nodes` as keyof TreeComponent;
 
           const originalParent = this.expandedCluster.parent;
@@ -323,30 +375,38 @@ export class GraphTest2Component implements OnInit {
           const returnNode = this.expandedCluster;
           this.expandedCluster = undefined;
 
+          this.initializeTree(null, oppositeSide, false)
+
           this.updateTree(returnNode, side)
         }
         this.g.attr("transform", event.transform);
       });
   }
 
-  initializeTree(data: any, side: string) {
+  initializeTree(data: any, side: string, firstTime: boolean) {
     const tree = `${side}Tree` as keyof TreeComponent;
     const root = `${side}Root` as keyof TreeComponent;
     const g = `g${side.charAt(0).toUpperCase() + side.slice(1)}` as keyof TreeComponent;
     const gNode = `g${side.charAt(0).toUpperCase() + side.slice(1)}Node` as keyof TreeComponent;
     const gLink = `g${side.charAt(0).toUpperCase() + side.slice(1)}Link` as keyof TreeComponent;
 
-    this[root] = d3.hierarchy(data);
-    this[tree] = d3.tree().size([this.width, this.height])
+    if (firstTime) {
+      this[root] = d3.hierarchy(data);
+      this[tree] = d3.tree().size([this.width, this.height])
+    }
 
     this[g] = this.g.append('g')
+      .attr("class", side + "-group")
+      .attr('id', side + "-group")
       //.attr("transform", "translate(" + (this.width/2) + "," + (this.height/3) + ")");
     
     this[gLink] = this[g].append("g")
+      .attr('id', side + "-link-group")
       .attr("cursor", "pointer")
       .attr("pointer-events", "all"); 
       
     this[gNode] = this[g].append('g')
+      .attr('id', side + "-node-group") 
       .attr("fill", "none")
       .attr("stroke", "white")
       .attr("stroke-opacity", 0.4)
@@ -469,7 +529,7 @@ export class GraphTest2Component implements OnInit {
       .append("g")
       .attr('class', 'node')
       .attr("transform", function() {
-        return "translate(" + source.y0 + "," + source.x0 + ")";
+        return "translate(" + source.y + "," + source.x + ")";
       })
       .on("click", (event: any, d:any) => {
         console.log(d)
@@ -491,6 +551,7 @@ export class GraphTest2Component implements OnInit {
     nodeUpdate
       .transition(transition)
       .duration(this.duration)
+      .style("opacity", 1)
       .attr('transform', function(d:any) {
         return 'translate(' +  d.y + ',' + d.x + ')';
       })
@@ -507,9 +568,10 @@ export class GraphTest2Component implements OnInit {
       return typeof d.data.id === 'string' || d.depth === 0;
     })
 
-    clusterNodesUpdate.selectAll("#transactionRect, #transactionText, #transactionFullScreenIcon")
+    clusterNodesUpdate.selectAll(".transactionRect, .transactionText, .transactionFullScreenIcon")
       .transition(transition)
       .duration(this.duration)
+      .style("opacity", 0)
       .remove();
 
     // Transaction nodes
@@ -517,9 +579,10 @@ export class GraphTest2Component implements OnInit {
         return d.depth > 0 && typeof d.data.id === 'number';
     });
 
-    transactionNodesUpdate.selectAll("#clusterRect, #clusterText")
+    transactionNodesUpdate.selectAll(".clusterRect, .clusterText")
       .transition(transition)
       .duration(this.duration)
+      .style("opacity", 0)
       .remove();
 
     clusterNodesUpdate
@@ -530,7 +593,7 @@ export class GraphTest2Component implements OnInit {
 
     clusterNodesUpdate
       .append("rect")
-      .attr("id", "clusterRect")
+      .attr("class", "clusterRect")
       .attr("rx", function(d:any) {
         if (d.data && d.data.id) {
           if (typeof d.data.id === 'string' && d.data.id.includes('cluster')) {
@@ -580,7 +643,7 @@ export class GraphTest2Component implements OnInit {
 
     clusterNodesUpdate
       .append("text")
-      .attr("id", "clusterText")
+      .attr("class", "clusterText")
       .style("fill", "white")
       .attr("dy", ".35em")
       .attr("x", function(d:any) {
@@ -593,7 +656,7 @@ export class GraphTest2Component implements OnInit {
 
     transactionNodesUpdate
       .append("rect")
-      .attr("id", "transactionRect")
+      .attr("class", "transactionRect")
       .attr("rx", 6)
       .attr("ry", 6)
       .attr("stroke-width", 1)
@@ -607,7 +670,7 @@ export class GraphTest2Component implements OnInit {
     // Transaction info summary
     transactionNodesUpdate
       .append("foreignObject")
-      .attr("id", "transactionText")
+      .attr("class", "transactionText")
       .attr("width", 150)
       .attr("height", 200)
       .attr("x", -75)
@@ -626,7 +689,7 @@ export class GraphTest2Component implements OnInit {
     // Full screen icon on the top right
     transactionNodesUpdate
       .append("foreignObject")
-      .attr("id", "transactionFullScreenIcon")
+      .attr("class", "transactionFullScreenIcon")
       .attr("width", 150)
       .attr("height", 200)
       .attr("x", -75)
@@ -666,8 +729,8 @@ export class GraphTest2Component implements OnInit {
       .attr('class', 'link')
       .attr("d", () => {
         const o = { 
-          x: source.x0, 
-          y: source.y0 
+          x: source.x, 
+          y: source.y 
         };
         return this.diagonal(o, o);
       })
@@ -714,9 +777,17 @@ export class GraphTest2Component implements OnInit {
     const linkTextAndArrowEnter = linkTextAndArrow.enter()
       .append("g")
       .attr("class", "link-text-group")
-      .attr("transform", "translate(" + source.y0 + "," + source.x0 + ")")
+      .attr("transform", "translate(" + source.y + "," + source.x + ")")
 
-    linkTextAndArrowEnter.append("text")
+    const linkTextAndArrowUpdate = linkTextAndArrowEnter.merge(linkTextAndArrow)
+
+    linkTextAndArrowUpdate.selectAll(".link-arrow, .link-text")
+      .transition(transition)
+      .duration(this.duration)
+      .style("opacity", 0)
+      .remove();
+
+    linkTextAndArrowUpdate.append("text")
       .attr("class", "link-text")
       .attr("dy", ".35em")
       .attr("text-anchor", "middle")
@@ -726,8 +797,8 @@ export class GraphTest2Component implements OnInit {
         return d.target.data.amount;
       });
 
-    linkTextAndArrowEnter.append("text")
-      .attr("class", "fa")
+    linkTextAndArrowUpdate.append("text")
+      .attr("class", "fa link-arrow")
       .attr("dy", "0.5em")
       .attr("text-anchor", "middle")
       .style("fill", "white")
@@ -756,8 +827,6 @@ export class GraphTest2Component implements OnInit {
         }
         return `rotate(${rotateDeg}deg) translateY(${translateY}px)`;
       });
-
-    const linkTextAndArrowUpdate = linkTextAndArrowEnter.merge(linkTextAndArrow)
 
     linkTextAndArrowUpdate
       .transition(transition)
