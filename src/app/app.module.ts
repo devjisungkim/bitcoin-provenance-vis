@@ -38,6 +38,7 @@ import { MdbTooltipModule } from 'mdb-angular-ui-kit/tooltip';
 import { MdbValidationModule } from 'mdb-angular-ui-kit/validation';
 import { GraphTestComponent } from './graph-test/graph-test.component';
 import { GraphTest2Component } from './graph-test2/graph-test2.component';
+import { GraphTest3Component } from './graph-test3/graph-test3.component';
 
 @NgModule({
   declarations: [
@@ -48,6 +49,7 @@ import { GraphTest2Component } from './graph-test2/graph-test2.component';
     FraudTransactionListComponent,
     GraphTestComponent,
     GraphTest2Component,
+    GraphTest3Component,
   ],
   imports: [
     BrowserModule,

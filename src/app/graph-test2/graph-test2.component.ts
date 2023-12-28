@@ -55,8 +55,6 @@ export class GraphTest2Component implements OnInit {
   private newChildren: any;
   private currentZoomScale = 0.4;
   private currentMousePosition: number[] = [];
-  private originGroupPosition: any;
-  private destGroupPosition: any;
 
   constructor(
   ) {  }
@@ -180,7 +178,6 @@ export class GraphTest2Component implements OnInit {
           }
 
           if (destGroup && elementOutOfViewport(destGroup, true)) {
-            this.destGroupPosition = destGroup.getBoundingClientRect();
             this.gDest
               .transition()
               .duration(this.duration)
@@ -444,59 +441,61 @@ export class GraphTest2Component implements OnInit {
       this[originalTreeData] = parse(stringify(this[root].descendants()));
     }
 
-    //console.log("Root", this[root])
-    //console.log("Nodes After Update", this[nodes]);
-    //console.log("ExpandedCluster", this.expandedCluster)
-
+    // Manually change position of nodes
+    
     let postExpandedNodes = false;
-
     let averageX = 0;
     let maxHiddenY = 0;
-    const hiddenNodes = this[nodes].filter((d:any) => typeof d.data.id === 'string' && d.data.id === 'hidden');
+
+    const hiddenNodes = this[nodes].filter((d: any) => typeof d.data.id === 'string' && d.data.id === 'hidden');
     if (hiddenNodes.length > 0) {
-      averageX = hiddenNodes.reduce((sum:any, node:any) => sum + node.x, 0) / hiddenNodes.length;
+      averageX = hiddenNodes.reduce((sum: any, node: any) => sum + node.x, 0) / hiddenNodes.length;
     };
 
-    const positionDifference = this[originalTreeData][0].x - this[root].x
+    const positionDifference = this[originalTreeData][0].x - this[root].x;
 
-    this[nodes].forEach((d:any) => {
+    this[nodes].forEach((d: any) => {
+      d.x0 = d.x;
+      
+      /*
+      if (d.parent && typeof d.data.id === 'number') {
+        const midPoint = (d.parent.children.length - 1) / 2;
+        const indexInParent = d.parent.children.indexOf(d);
+        const parentDiff = Math.abs(d.parent.x - d.parent.x0);
 
-      if (d.parent && d.parent.children.length > 1 && typeof d.data.id === 'number') {
-         const midPoint = d.parent.children.length / 2;
-         const indexInParent = d.parent.children.indexOf(d);
-         const parentDiff = Math.abs(d.x - d.parent.x);
-         if (indexInParent > midPoint) {
-          if (Math.ceil(midPoint) === indexInParent) {
-            d.x += parentDiff;
-          } else {
-            d.x += parentDiff * 2;
-          };
-        } else if (indexInParent < midPoint) {
-          if (Math.floor(midPoint) === indexInParent) {
+        if (indexInParent < midPoint) {
+          //d.x -= parentDiff + positionDifference;
+          if (Math.floor(midPoint) !== indexInParent) {
             d.x -= parentDiff;
-          } else {
-            d.x -= parentDiff * 2;
-          };
-        };
-      };
-
-      if (d.depth > 0) {
-        const distanceY = d.parent && typeof d.data.id === 'number' ? 280 : 180;
-        d.y = d.parent.y + ((side === 'origin' ? -1 : 1) * distanceY);
+          }
+        } else if (indexInParent > midPoint) {
+          //d.x += parentDiff - positionDifference
+          if (Math.ceil(midPoint) !== indexInParent) {
+            d.x += parentDiff;
+          }
+        } else {
+          d.x = d.parent.x - positionDifference;
+        }
       }
+      */
 
       d.x += positionDifference;
+
+      if (d.parent) {
+        const distanceY = d.parent && typeof d.data.id === 'number' ? 280 : 180;
+        d.y = d.parent.y + ((side === 'origin' ? -1 : 1) * distanceY);
+      };
 
       if (typeof d.data.id === 'string' && d.data.id === 'hidden') {
         if (Math.abs(maxHiddenY) < Math.abs(d.y)) {
           maxHiddenY = d.y
-        }
-        postExpandedNodes = true
+        };
+        postExpandedNodes = true;
       } else if (postExpandedNodes && typeof d.data.id === 'string' && d.data.id.includes('cluster')) {
         this[originalTreeData].forEach((cluster:any) => {
           if (cluster.data.id === d.data.id) {
-            d.x = cluster.x
-          }
+            d.x = cluster.x;
+          };
         })
       };
     });
@@ -551,17 +550,12 @@ export class GraphTest2Component implements OnInit {
     nodeUpdate
       .transition(transition)
       .duration(this.duration)
-      .style("opacity", 1)
+      .style("opacity", (d: any) => {
+        return d.data && d.data.id === 'hidden' ? 0 : 1;
+      })
       .attr('transform', function(d:any) {
         return 'translate(' +  d.y + ',' + d.x + ')';
       })
-
-    const hiddenNodesUpdate = nodeUpdate.filter(function(d :any) {
-      return d.data && d.data.id === 'hidden'
-    })
-
-    hiddenNodesUpdate
-      .style("opacity", 0)
 
     // Cluster and root nodes
     const clusterNodesUpdate = nodeUpdate.filter(function (d: any) {
@@ -598,8 +592,8 @@ export class GraphTest2Component implements OnInit {
         if (d.data && d.data.id) {
           if (typeof d.data.id === 'string' && d.data.id.includes('cluster')) {
             return 0;
-          }
-        }
+          };
+        };
         if (d.parent) return d.children || d._children ? 0 : 6;
         return 10;
       })
@@ -665,7 +659,7 @@ export class GraphTest2Component implements OnInit {
       .attr("height", 200)
       .attr("x", -75)
       .attr('y', -100)
-      .style("fill", "var(--content-bg-color)")
+      .style("fill", "var(--content-bg-color)");
       
     // Transaction info summary
     transactionNodesUpdate
@@ -711,6 +705,12 @@ export class GraphTest2Component implements OnInit {
         }
       });
 
+    transactionNodesUpdate.selectAll(".transactionRect, .transactionText, .transactionFullScreenIcon")
+      .style("opacity", 0)
+      .transition(transition)
+      .duration(this.duration)
+      .style("opacity", 1)
+
     const nodeExit = node
       .exit()
       .transition(transition)
@@ -733,7 +733,7 @@ export class GraphTest2Component implements OnInit {
           y: source.y 
         };
         return this.diagonal(o, o);
-      })
+      });
 
     const linkUpdate = linkEnter.merge(link);
 
@@ -751,12 +751,12 @@ export class GraphTest2Component implements OnInit {
         }
         return Math.max(1, Math.min(weight, 15))
         */
-       return 1
+       return 1;
       })
       .style('stroke', ((d:any) => {
         return d.data && typeof d.data.id === 'number' || d.data.id === 'hidden' ? 'var(--bitcoin-theme)' : 'white';
       }))
-      .attr('fill', 'none')
+      .attr('fill', 'none');
 
     const linkExit = link
       .exit()
