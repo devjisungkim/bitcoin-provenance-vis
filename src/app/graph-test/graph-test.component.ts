@@ -52,7 +52,7 @@ export class GraphTestComponent implements OnInit {
   private screenHeight: any;
   private width: any;
   private height: any;
-  private duration = 750;  
+  private duration = 500;  
   private expandedCluster: any;
   private initialOriginTreeData: any;
   private initialDestTreeData: any;
@@ -68,42 +68,147 @@ export class GraphTestComponent implements OnInit {
     this.screenHeight = window.innerHeight; 
 
     const originData = {
-      id: 1,
+      txid: '1',
       children: [{
-        id: 'cluster1',
-        transactions: []
+        txid: 'cluster1',
+        transactions: [{ 
+          txid: '2',
+          value: 20,
+          children: [
+            {
+              txid: '4',
+              value: 200,
+              children: [
+                {
+                  txid: '6',
+                  value: 1
+                }
+              ]
+            },
+          ]
+        },
+        {
+          txid: '90',
+          value: 700
+        }]
       }]
-    }
+    };
 
     const destData = {
       id: 1,
       amount: 1,
       children: [{
         id: 'cluster1',
-        transactions: [],
+        transactions: [{ 
+          id: 2,
+          amount: 20,
+          children: [
+            {
+              id: 4,
+              amount: 200,
+              children: [
+                {
+                  id: 6,
+                  amount: 1
+                }
+              ]
+            },
+          ]
+        },
+        {
+          id: 90,
+          amount: 700
+        }
+        ],
         children: [{
           id: 'cluster2',
-          transactions: [],
+          transactions: [{
+            id: 3,
+            amount: 90,
+            children: [ 
+              {
+                id: 5,
+                amount: 34,
+              },
+              {
+                id: 8,
+                amount: 89
+              }
+            ]
+          }],
           children: [{
             id: 'cluster3',
-            transactions: []
+            transactions: [{
+              id: 3,
+              amount: 90,
+              children: [ 
+                {
+                  id: 5,
+                  amount: 34,
+                }
+              ]
+            }]
           }]
         }, {
           id: 'cluster4',
-          transactions: [],
+          transactions: [{
+            id: 3,
+            amount: 90,
+            children: [ 
+              {
+                id: 5,
+                amount: 34,
+              },
+              {
+                id: 8,
+                amount: 89
+              }
+            ]
+          }],
           children: [{
             id: 'cluster3',
-            transactions: []
+            transactions: [{
+              id: 3,
+              amount: 90,
+              children: [ 
+                {
+                  id: 5,
+                  amount: 34,
+                }
+              ]
+            }]
           }]
         }, {
           id: 'cluster5',
-          transactions: [],
+          transactions: [{
+            id: 3,
+            amount: 90,
+            children: [ 
+              {
+                id: 5,
+                amount: 34,
+              },
+              {
+                id: 8,
+                amount: 89
+              }
+            ]
+          }],
           children: [{
               id: 'cluster6',
-              transactions: [],
-              children: [{
-                id: 'cluster3',
-                transactions: []
+              transactions: [{
+                id: 3,
+                amount: 90,
+                children: [ 
+                  {
+                    id: 5,
+                    amount: 34,
+                  },
+                  {
+                    id: 8,
+                    amount: 89
+                  }
+                ]
               }]
             }]
          }]
@@ -120,12 +225,12 @@ export class GraphTestComponent implements OnInit {
       .attr("style", "max-width: 100%; height: auto; user-select: none;");
     
     this.g = this.svg.append('g')
-      .attr("transform", "translate(" + (this.width/2) + "," + (this.height/3) + ")");
+      //.attr("transform", "translate(" + (this.width/2) + "," + (this.height/3) + ")");
     
     const zoom = this.initializeZoomDragBehaviour()
 
     this.svg.call(zoom)
-      .call(zoom.transform, d3.zoomIdentity.translate(this.width/2, this.height/2).scale(0.4))
+      .call(zoom.transform, d3.zoomIdentity.translate(this.width/3, this.height/6).scale(0.2))
       .on("dblclick.zoom", null);
     
     this.initializeTree(originData, 'origin', true);
@@ -134,7 +239,7 @@ export class GraphTestComponent implements OnInit {
 
   initializeZoomDragBehaviour() {
     return d3.zoom()
-      .scaleExtent([0.4, 2])
+      .scaleExtent([0.2, 2])
       .on("zoom", (event:any) => {
         this.currentZoomScale = event.transform.k;
 
@@ -423,7 +528,7 @@ export class GraphTestComponent implements OnInit {
     const duplicatePairs = `${side}DuplicatePairs` as keyof TreeComponent;
 
     if (!this[duplicatePairs]) {
-      const nodePairs: { source: any, target: any }[] = []
+      const nodePairs: { source: any, target: any, initial: boolean }[] = []
       const nodeUniqueMap = new Map()
 
       this[root].descendants().forEach((d: any) => {
@@ -433,7 +538,8 @@ export class GraphTestComponent implements OnInit {
             nodeUniqueMap.set(id, d);
             nodePairs.push({
               source: d.parent,
-              target: d
+              target: d,
+              initial: true
             });
           } else {
             const existingNode = nodeUniqueMap.get(id);
@@ -444,6 +550,7 @@ export class GraphTestComponent implements OnInit {
               nodePairs.forEach((node: any) => {
                 if (node.target.data.id === id) {
                   node.target = d;
+                  node.initial = false;
                   if (node.source.children) {
                     node.source.children = node.source.children.filter((child: any) => child.data.id !== id);
 
@@ -456,12 +563,14 @@ export class GraphTestComponent implements OnInit {
 
               nodePairs.push({
                 source: parentNode,
-                target: d
+                target: d,
+                initial: true
               });
             } else {
               nodePairs.push({
                 source: parentNode,
-                target: existingNode
+                target: existingNode,
+                initial: false
               });
 
               parentNode.children = parentNode.children.filter((child: any) => child.data.id !== id);
@@ -475,11 +584,7 @@ export class GraphTestComponent implements OnInit {
       })
       this[duplicatePairs] = nodePairs;
     };
-
-    console.log(this[duplicatePairs])
     
-    //console.log(this[root].descendants())
-
     this[tree](this[root]);
 
     this[links] = this[root].descendants().slice(1);
@@ -500,44 +605,48 @@ export class GraphTestComponent implements OnInit {
 
     const positionDifference = this[originalTreeData][0].x - this[root].x;
 
-    this[nodes].forEach((d:any) => {
+    this[nodes].forEach((d: any) => {
+      d.x0 = d.x;
+      
+      /*
+      if (d.parent && typeof d.data.id === 'number') {
+        const midPoint = (d.parent.children.length - 1) / 2;
+        const indexInParent = d.parent.children.indexOf(d);
+        const parentDiff = Math.abs(d.parent.x - d.parent.x0);
 
-      if (d.parent && d.parent.children.length > 1 && typeof d.data.id === 'number') {
-         const midPoint = d.parent.children.length / 2;
-         const indexInParent = d.parent.children.indexOf(d);
-         const parentDiff = Math.abs(d.x - d.parent.x);
-         if (indexInParent > midPoint) {
-          if (Math.ceil(midPoint) === indexInParent) {
-            d.x += parentDiff;
-          } else {
-            d.x += parentDiff * 2;
-          };
-        } else if (indexInParent < midPoint) {
-          if (Math.floor(midPoint) === indexInParent) {
+        if (indexInParent < midPoint) {
+          //d.x -= parentDiff + positionDifference;
+          if (Math.floor(midPoint) !== indexInParent) {
             d.x -= parentDiff;
-          } else {
-            d.x -= parentDiff * 2;
-          };
-        };
-      };
-
-      if (d.depth > 0) {
-        const distanceY = d.parent && typeof d.data.id === 'number' ? 280 : 180;
-        d.y = d.parent.y + ((side === 'origin' ? -1 : 1) * distanceY);
+          }
+        } else if (indexInParent > midPoint) {
+          //d.x += parentDiff - positionDifference
+          if (Math.ceil(midPoint) !== indexInParent) {
+            d.x += parentDiff;
+          }
+        } else {
+          d.x = d.parent.x - positionDifference;
+        }
       }
+      */
 
       d.x += positionDifference;
+
+      if (d.parent) {
+        const distanceY = d.parent && typeof d.data.id === 'number' ? 280 : 180;
+        d.y = d.parent.y + ((side === 'origin' ? -1 : 1) * distanceY);
+      };
 
       if (typeof d.data.id === 'string' && d.data.id === 'hidden') {
         if (Math.abs(maxHiddenY) < Math.abs(d.y)) {
           maxHiddenY = d.y
-        }
-        postExpandedNodes = true
+        };
+        postExpandedNodes = true;
       } else if (postExpandedNodes && typeof d.data.id === 'string' && d.data.id.includes('cluster')) {
         this[originalTreeData].forEach((cluster:any) => {
           if (cluster.data.id === d.data.id) {
-            d.x = cluster.x
-          }
+            d.x = cluster.x;
+          };
         })
       };
     });
@@ -592,17 +701,12 @@ export class GraphTestComponent implements OnInit {
     nodeUpdate
       .transition(transition)
       .duration(this.duration)
-      .style("opacity", 1)
+      .style("opacity", (d: any) => {
+        return d.data && d.data.id === 'hidden' ? 0 : 1;
+      })
       .attr('transform', function(d:any) {
         return 'translate(' +  d.y + ',' + d.x + ')';
-      })
-
-    const hiddenNodesUpdate = nodeUpdate.filter(function(d :any) {
-      return d.data && d.data.id === 'hidden'
-    })
-
-    hiddenNodesUpdate
-      .style("opacity", 0)
+      });
 
     // Cluster and root nodes
     const clusterNodesUpdate = nodeUpdate.filter(function (d: any) {
@@ -627,12 +731,9 @@ export class GraphTestComponent implements OnInit {
       .remove();
 
     clusterNodesUpdate
-      .attr("r", 1e-6)
       .style("fill", function(d:any) {
-        return d.parent ? "var(--theme-bg-color)" : "red";
-      });
-
-    clusterNodesUpdate
+        return d.parent ? "var(--theme-bg-color)" : "#c7402c";
+      })
       .append("rect")
       .attr("class", "clusterRect")
       .attr("rx", function(d:any) {
@@ -641,8 +742,7 @@ export class GraphTestComponent implements OnInit {
             return 0;
           }
         }
-        if (d.parent) return d.children || d._children ? 0 : 6;
-        return 10;
+        return d.children || d._children ? 0 : 6;
       })
       .attr("ry", function(d:any) {
         if (d.data && d.data.id) {
@@ -650,8 +750,7 @@ export class GraphTestComponent implements OnInit {
             return 0;
           }
         }
-        if (d.parent) return d.children || d._children ? 0 : 6;
-        return 10;
+        return d.children || d._children ? 0 : 6;
       })
       .attr("stroke-width", function(d:any) {
         return d.parent ? 1 : 0;
@@ -675,21 +774,16 @@ export class GraphTestComponent implements OnInit {
       .attr("stroke-opacity", "1")
       .attr("x", 0)
       .attr("y", -10)
-      .attr("width", function(d:any) {
-        return d.parent ? 40 : 20;
-      })
-      .attr("height", function(d:any) {
-        return d.parent ? 20 : 20;
-      });    
+      .attr("width", 40)
+      .attr("height", 20)
 
     clusterNodesUpdate
       .append("text")
       .attr("class", "clusterText")
+      .style("stroke", "none")
       .style("fill", "white")
       .attr("dy", ".35em")
-      .attr("x", function(d:any) {
-        return d.parent ? 20 : 10;
-      })
+      .attr("x", 20)
       .attr("text-anchor", "middle")
       .text(function(d:any) {
         return d.parent ? "" : "T";
@@ -719,7 +813,6 @@ export class GraphTestComponent implements OnInit {
       .append("xhtml:div")
       .style("width", "100%")
       .style("height", "100%")
-      .style("overflow", "auto")
       .style("box-sizing", "border-box")
       .style("padding", "10px")
       .append("p")
@@ -751,6 +844,12 @@ export class GraphTestComponent implements OnInit {
           transactionDetail.classList.add("show");
         }
       });
+
+    transactionNodesUpdate.selectAll(".transactionRect, .transactionText, .transactionFullScreenIcon")
+      .style("opacity", 0)
+      .transition(transition)
+      .duration(this.duration)
+      .style("opacity", 1)
 
     const nodeExit = node
       .exit()
@@ -812,7 +911,7 @@ export class GraphTestComponent implements OnInit {
       })
       .remove()
 
-    const manualLink = this[gLink].selectAll(".manual-link").data(this[duplicatePairs]);
+    const manualLink = this[gLink].selectAll(".manual-link").data(this[duplicatePairs].filter((d: any) => !d.initial));
 
     const manualLinkEnter = manualLink.enter()
       .append("path")
@@ -833,7 +932,8 @@ export class GraphTestComponent implements OnInit {
       .attr("d", (d: any) => {
         const source = { x: d.source.x, y: d.source.y };
         const target = { x: d.target.x, y: d.target.y };
-        return this.diagonal(source, target);
+        const pathString = `M${source.y},${source.x} H${source.y + 40} L${target.y},${target.x}`;
+        return pathString;
       })
       .attr("stroke", "white")
       .attr("stroke-width", 1)
@@ -853,7 +953,7 @@ export class GraphTestComponent implements OnInit {
 
     const createLinkTextArrow = (linkData: any, source: any, i: number) => {
       const linkTextAndArrow = this[gLink].selectAll('.link-text-group'+i)
-        .data(linkData, (d:any) => d.id)
+        .data(linkData, (d: any) => d.id)
 
       const linkTextAndArrowEnter = linkTextAndArrow.enter()
         .append("g")
@@ -886,27 +986,33 @@ export class GraphTestComponent implements OnInit {
         .text('\uf106')
         .style("font-size", "22px")
         .style("transform", (d: any) => {
-          let rotateDeg = 0;
-          let translateY = -30;
-          // Left side
-          if (d.target.y < 0) {
-            if (d.source.x > d.target.x) {
-              // Head downwards
-              rotateDeg = 180;
-            } else if (d.source.x === d.target.x) {
-              // Head right
-              rotateDeg = 90;
+          const translateY = -30;
+          if (i === 1) {
+            let rotateDeg = 0;
+            // Left side
+            if (d.target.y < 0) {
+              if (d.source.x > d.target.x) {
+                // Head downwards
+                rotateDeg = 180;
+              } else if (d.source.x === d.target.x) {
+                // Head right
+                rotateDeg = 90;
+              }
+            } else {
+              if (d.source.x < d.target.x) {
+                // Head upwards
+                rotateDeg = 180;
+              } else if (d.source.x === d.target.x) {
+                // Head right
+                rotateDeg = 90;
+              }
             }
+            return `rotate(${rotateDeg}deg) translateY(${translateY}px)`;
           } else {
-            if (d.source.x < d.target.x) {
-              // Head upwards
-              rotateDeg = 180;
-            } else if (d.source.x === d.target.x) {
-              // Head right
-              rotateDeg = 90;
-            }
+            const angle = Math.atan2(d.target.y - d.source.y + 40, d.target.x - d.source.x) * (180 / Math.PI);
+            const translateX = (angle - 0) * ((-5) - (-20)) / (90 - 0) + (-20);
+            return `rotate(${90 + (90 - angle)}deg) translateX(${translateX}px) translateY(${translateY}px)`;
           }
-          return `rotate(${rotateDeg}deg) translateY(${translateY}px)`;
         });
 
       linkTextAndArrowUpdate
@@ -925,7 +1031,7 @@ export class GraphTestComponent implements OnInit {
     }
 
     createLinkTextArrow(this[root].links(), source, 1)
-    createLinkTextArrow(this[duplicatePairs], source, 2)
+    createLinkTextArrow(this[duplicatePairs].filter((d: any) => !d.initial), source, 2)
   
     this[nodes].forEach((d:any) => {
         d.x0 = d.x;

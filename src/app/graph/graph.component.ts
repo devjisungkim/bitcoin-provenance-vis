@@ -23,7 +23,7 @@ export class GraphComponent implements OnInit {
   private height: any;
   private radialCluster: any
   private diameter = 300;
-  private duration = 750;  
+  private duration = 500;  
   private gLink: any;
   private gNode: any;
   sidenavOpened = false;

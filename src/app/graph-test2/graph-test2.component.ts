@@ -48,7 +48,7 @@ export class GraphTest2Component implements OnInit {
   private screenHeight: any;
   private width: any;
   private height: any;
-  private duration = 750;  
+  private duration = 500;  
   private expandedCluster: any;
   private originalOriginTreeData: any;
   private originalDestTreeData: any;
@@ -131,12 +131,12 @@ export class GraphTest2Component implements OnInit {
       .attr("style", "max-width: 100%; height: auto; user-select: none;");
     
     this.g = this.svg.append('g')
-      .attr("transform", "translate(" + (this.width/2) + "," + (this.height/3) + ")");
+      //.attr("transform", "translate(" + (this.width/2) + "," + (this.height/2) + ")");
     
     const zoom = this.initializeZoomDragBehaviour()
 
     this.svg.call(zoom)
-      .call(zoom.transform, d3.zoomIdentity.translate(this.width/2, this.height/2).scale(0.4))
+      .call(zoom.transform, d3.zoomIdentity.translate(this.width/3, this.height/6).scale(0.4))
       .on("dblclick.zoom", null);
     
     this.initializeTree(data, 'origin', true);
@@ -390,13 +390,12 @@ export class GraphTest2Component implements OnInit {
     if (firstTime) {
       this[root] = d3.hierarchy(data);
       this[tree] = d3.tree().size([this.width, this.height])
-    }
+    };
 
     this[g] = this.g.append('g')
       .attr("class", side + "-group")
-      .attr('id', side + "-group")
-      //.attr("transform", "translate(" + (this.width/2) + "," + (this.height/3) + ")");
-    
+      .attr('id', side + "-group");
+
     this[gLink] = this[g].append("g")
       .attr('id', side + "-link-group")
       .attr("cursor", "pointer")
@@ -417,7 +416,7 @@ export class GraphTest2Component implements OnInit {
       if (d._children) {
         d.children = d._children;
         d._children = null;
-      }
+      };
     });
 
     this.updateTree(this[root], side)
@@ -555,7 +554,7 @@ export class GraphTest2Component implements OnInit {
       })
       .attr('transform', function(d:any) {
         return 'translate(' +  d.y + ',' + d.x + ')';
-      })
+      });
 
     // Cluster and root nodes
     const clusterNodesUpdate = nodeUpdate.filter(function (d: any) {
@@ -579,23 +578,19 @@ export class GraphTest2Component implements OnInit {
       .style("opacity", 0)
       .remove();
 
-    clusterNodesUpdate
-      .attr("r", 1e-6)
+      clusterNodesUpdate
       .style("fill", function(d:any) {
-        return d.parent ? "var(--theme-bg-color)" : "red";
-      });
-
-    clusterNodesUpdate
+        return d.parent ? "var(--theme-bg-color)" : "#c7402c";
+      })
       .append("rect")
       .attr("class", "clusterRect")
       .attr("rx", function(d:any) {
         if (d.data && d.data.id) {
           if (typeof d.data.id === 'string' && d.data.id.includes('cluster')) {
             return 0;
-          };
-        };
-        if (d.parent) return d.children || d._children ? 0 : 6;
-        return 10;
+          }
+        }
+        return d.children || d._children ? 0 : 6;
       })
       .attr("ry", function(d:any) {
         if (d.data && d.data.id) {
@@ -603,8 +598,7 @@ export class GraphTest2Component implements OnInit {
             return 0;
           }
         }
-        if (d.parent) return d.children || d._children ? 0 : 6;
-        return 10;
+        return d.children || d._children ? 0 : 6;
       })
       .attr("stroke-width", function(d:any) {
         return d.parent ? 1 : 0;
@@ -628,21 +622,16 @@ export class GraphTest2Component implements OnInit {
       .attr("stroke-opacity", "1")
       .attr("x", 0)
       .attr("y", -10)
-      .attr("width", function(d:any) {
-        return d.parent ? 40 : 20;
-      })
-      .attr("height", function(d:any) {
-        return d.parent ? 20 : 20;
-      });    
+      .attr("width", 40)
+      .attr("height", 20)
 
     clusterNodesUpdate
       .append("text")
       .attr("class", "clusterText")
+      .style("stroke", "none")
       .style("fill", "white")
       .attr("dy", ".35em")
-      .attr("x", function(d:any) {
-        return d.parent ? 20 : 10;
-      })
+      .attr("x", 20)
       .attr("text-anchor", "middle")
       .text(function(d:any) {
         return d.parent ? "" : "T";
@@ -672,7 +661,6 @@ export class GraphTest2Component implements OnInit {
       .append("xhtml:div")
       .style("width", "100%")
       .style("height", "100%")
-      .style("overflow", "auto")
       .style("box-sizing", "border-box")
       .style("padding", "10px")
       .append("p")
