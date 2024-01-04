@@ -497,7 +497,7 @@ export class GraphTest3Component implements OnInit {
           vout: 2
         }
       ]
-    };    
+    }; 
     
     this.width = this.screenWidth - this.margin.left - this.margin.right;
     this.height = this.screenHeight - this.margin.top - this.margin.bottom;
@@ -853,11 +853,10 @@ export class GraphTest3Component implements OnInit {
               node.initial = false;
               if (node.source.children) {
                 node.source.children = node.source.children.filter((child: any) => child.data.txid !== id);
-
                 if (node.source.children.length === 0) {
                   node.source.children = null;
-                }
-              }
+                };
+              };
             };
           });
 
@@ -912,6 +911,10 @@ export class GraphTest3Component implements OnInit {
       d.y = maxHiddenY + (side === 'origin' ? -1 : 1) * 100;
       d.x = averageX;
     });
+
+    this[nodes].forEach((d: any) => {
+
+    })
 
     let left = this[root];
     let right = this[root];
@@ -981,6 +984,7 @@ export class GraphTest3Component implements OnInit {
     txoNodesUpdate
       .append('circle')
       .attr("class", "txoCircle")
+      .style("stroke", "none")
       .attr("r", 40)
       .attr("fill", function(d: any) {
         return d.data.txid === 'utxo' ? 'green' : 'red';
@@ -990,7 +994,6 @@ export class GraphTest3Component implements OnInit {
 
     txoNodesUpdate
       .append("text")
-      .style("stroke", "none")
       .style("fill", "white")
       .attr("dy", ".35em")
       .attr("text-anchor", "middle")
@@ -1002,7 +1005,7 @@ export class GraphTest3Component implements OnInit {
       .attr("x", 0)
       .text(function(d: any) {
         const voutIndex = d.data.vout;
-        return `${d.parent.data.vout[voutIndex].value}`;
+        return d.parent.data.vout[voutIndex].value;
       });
 
     clusterNodesUpdate
@@ -1062,7 +1065,7 @@ export class GraphTest3Component implements OnInit {
       .attr("x", -75)
       .attr('y', -100)
       .style("fill", function(d: any) {
-        return d.parent ? "var(--content-bg-color)" : "#c7402c";
+        return d.parent ? "var(--content-bg-color)" : "var(--bitcoin-theme)";
       });
       
     // Transaction info summary
@@ -1081,7 +1084,10 @@ export class GraphTest3Component implements OnInit {
       .append("p")
       .html(function(d: any) {
         return `txid: ${d.data.txid} <br> featureA <br> featureB <br> featureC <br> featureD`;
-      });
+      })
+      .style("color", function(d: any) {
+        return d.parent ? "white" : "black";
+      })
 
     // Full screen icon on the top right
     transactionNodesUpdate
@@ -1280,7 +1286,9 @@ export class GraphTest3Component implements OnInit {
             return `rotate(${rotateDeg}deg) translateY(${translateY}px)`;
           } else {
             const angle = Math.atan2(d.target.y - d.source.y - 85 * 2, d.target.x - d.source.x) * (180 / Math.PI);
-            const translateX = (angle - 0) * ((-5) - (-15)) / (90 - 0) + (-15);
+            const minTranslateX = -15;
+            const maxTranslateX = -5;
+            const translateX = (angle - 0) * (maxTranslateX - minTranslateX) / (90 - 0) + minTranslateX;
             return `rotate(${90 + (90 - angle)}deg) translateX(${translateX}px) translateY(${translateY}px)`;
           };
         });
