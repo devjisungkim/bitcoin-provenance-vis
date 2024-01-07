@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, map } from 'rxjs';
+import { Observable } from 'rxjs';
 
 @Injectable({
   providedIn: 'root'
@@ -13,19 +13,43 @@ export class DataRetrievalService {
     private http: HttpClient
     ) { }
 
-  getDestinationDummy(id: string): Observable<JSON> {
-    const jsonURL = this.url + id + '_dest.json'
+  getDestinationData(txid: string): Observable<JSON> {
+    const jsonURL = this.url + 'dest_' + txid + '.json';
     return this.http.get<JSON>(jsonURL);
   }
 
-  getTransactionMetadata(id: string): Observable<JSON> {
-    return this.http.get<any>(this.url + 'metadata.json').pipe(
-      map(metadata => metadata.metadata_array.find((entry:any) => entry.id === id))
-    );
-  }
+  // this function groups the dummy data (re-uses it for multiple groups)
+  generatePerformanceData(txid: string): Promise<{ txid: string; children: any[] }> {
+    return new Promise((resolve) => {
+      this.getDestinationData(txid).subscribe((data: any) => {
+        const root: { txid: string; children: any[] } = {
+          txid: data.txid,
+          children: []
+        };
+  
+        const numChildren = data.children.length;
+  
+        root.children.push(this.groupTransactions(0, data.children[0]));
+        root.children.push(this.groupTransactions(1, data.children[0]));
 
-  getOriginDummy(id: string): Observable<JSON> {
-    const jsonURL = this.url + id + '_origin.json'
-    return this.http.get<JSON>(jsonURL);
+        resolve(root);
+      });
+    });
+  }
+  
+
+  groupTransactions(groupid: number, transactions: any) {
+    return {
+      txid: transactions.txid,
+      from: transactions.from,
+      to: transactions.to+groupid,
+      value: transactions.value,
+      children: [
+        {
+          txid: `cluster${groupid}`,
+          transactions: [transactions]
+        }
+      ]
+    };
   }
 }

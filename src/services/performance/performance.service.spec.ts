@@ -1,13 +1,13 @@
 import { TestBed } from '@angular/core/testing';
 
-import { HclusteringService } from './hclustering.service';
+import { PerformanceService } from './performance.service';
 
-describe('HclusteringService', () => {
-  let service: HclusteringService;
+describe('PerformanceService', () => {
+  let service: PerformanceService;
 
   beforeEach(() => {
     TestBed.configureTestingModule({});
-    service = TestBed.inject(HclusteringService);
+    service = TestBed.inject(PerformanceService);
   });
 
   it('should be created', () => {

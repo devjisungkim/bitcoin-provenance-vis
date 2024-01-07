@@ -24,3 +24,61 @@
     transform: translate(-50%, -50%) scale(1);
     opacity: 1;
 }
+
+.legend {
+    position: fixed;
+    top: 20px;
+    right: 20px; /* Update left to right */
+    background-color: var(--theme-bg-color);
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    z-index: 1000; /* Ensure the legend is on top of other elements */
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.legend-text {
+    font-size: 10px;
+    margin-left: 5px;
+}
+
+.utxo-node {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background-color: green;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.stxo-node {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background-color: red;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.cluster-node {
+    width: 25px;
+    height: 20px;
+    background-color: var(--theme-bg-color);
+    border: 1px solid cyan; 
+}
+
+.transaction-node {
+    width: 20px;
+    height: 25px;
+    border-radius: 3px;
+    border: 1px solid var(--bitcoin-theme); 
+}

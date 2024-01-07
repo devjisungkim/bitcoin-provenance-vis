@@ -43,12 +43,14 @@ export class GraphComponent implements OnInit {
     this.screenHeight = window.innerHeight; 
     this.activatedRoute.params.subscribe(params => { 
       this.graphLoading = true;
+      /*
       this.dataRetrieval.getDestinationDummy(params['id']).subscribe((data: any) => {
         setTimeout(() => {
           this.graphLoading = false;
           this.initializeTree(data);
         }, 500);
       });
+      */
     });
   }
 
@@ -363,12 +365,14 @@ export class GraphComponent implements OnInit {
     d3.selectAll('.selected-node').classed('selected-node', false);
 
     this.detailLoading = true
+    /*
     this.selectedTransactionData = this.dataRetrieval.getTransactionMetadata(node.data.id).subscribe((data:any) => { 
       setTimeout(() => { 
         this.selectedTransactionData = data
         this.detailLoading = false
       }, 1500);
     });
+    */
 
     this.gNode.selectAll('g.node')
       .filter((d: any) => d === node)

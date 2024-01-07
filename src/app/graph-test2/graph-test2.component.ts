@@ -984,18 +984,9 @@ export class GraphTest2Component implements OnInit {
       .transition(transition)
       .duration(this.duration)
       .attr("d", (d: any) => {
-        return this.diagonal(d, d.parent); 
+        return this.diagonal(d.parent, d); 
       })
-      .attr('stroke-width', (d: any) => {
-        /*
-        let weight = 0
-        if (d.data && d.data.value {
-          weight = d.data.value / 100
-        }
-        return Math.max(1, Math.min(weight, 15))
-        */
-       return 1;
-      })
+      .attr('stroke-width', 1)
       .style('stroke', ((d: any) => {
         return !d.data.txid.includes('cluster') || d.data.txid === 'hidden' ? 'var(--bitcoin-theme)' : 'white';
       }))
