@@ -52,7 +52,7 @@ export class GraphTestComponent implements OnInit {
   private screenHeight: any;
   private width: any;
   private height: any;
-  private duration = 500;  
+  private duration = 750;  
   private expandedCluster: any;
   private newChildren: any;
   private zoom: any;
@@ -497,7 +497,7 @@ export class GraphTestComponent implements OnInit {
       .duration(this.duration)
       .attr("viewBox", [-this.margin.left, left.x - this.margin.top, this.width, height])
       .tween("resize", window.ResizeObserver ? null : () => () => this.svg.dispatch("toggle"));
-
+    
     const node = this[gNode].selectAll("g.node").data(this[nodes], (d: any) => d.txid || (d.txid = ++i));
 
     const nodeEnter = node

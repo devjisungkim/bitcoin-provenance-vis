@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ViewEncapsulation } from '@angular/core';
 import * as d3 from 'd3';
 import { parse, stringify } from 'flatted';
 
@@ -24,7 +24,8 @@ type TreeComponent = {
 @Component({
   selector: 'app-graph-test2',
   templateUrl: './graph-test2.component.html',
-  styleUrls: ['./graph-test2.component.scss']
+  styleUrls: ['./graph-test2.component.scss'],
+  encapsulation: ViewEncapsulation.None
 })
 export class GraphTest2Component implements OnInit {
   private svg: any;
@@ -50,11 +51,18 @@ export class GraphTest2Component implements OnInit {
   private screenHeight: any;
   private width: any;
   private height: any;
-  private duration = 500;  
+  private duration = 750;  
   private expandedCluster: any;
   private newChildren: any;
   private zoom: any;
   private transactionNodeSize = { width: 150, height: 200 };
+  searchQuery: string = '';
+  showErrorMessage: boolean = false;
+  searchErrorMessage: string = '';
+  showStatusMessage: boolean = false;
+  searchStatusMessage: string = '';
+  showSuccessMessage: boolean = false;
+  searchSuccessMessage: string = '';
 
   constructor(
   ) {  }
@@ -64,24 +72,33 @@ export class GraphTest2Component implements OnInit {
     this.screenHeight = window.innerHeight; 
 
     const originData = {
-      txid: '1',
+      txid: '1db0c47d1c7898e29c0c8b10c5f4528e3a7c273168614f048699f76922683f32',
       children: [
         {
           txid: 'stxo',
+          address: '1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa',
+          from: 259,
+          to: 1,
           value: 8.801,
           children: [
             {
               txid: 'cluster',
               transactions: [
                 {
-                  txid: '259',
+                  txid: '2a5b367e8d6c78e8b7dfde1f607dc3ebe458e56a27850e1d5c3eaf54b25f141',
                   children: [
                     {
                       txid: 'stxo',
+                      address: '3Cbq7aT1tY8kMxWLbitaG7yT6bPbKChq64',
+                      from: null,
+                      to: 259,
                       value: 0.02
                     },
                     {
                       txid: 'stxo',
+                      address: '12c6DSiU4Rq3P4ZxziKxzrL5LmMBrzjrJX',
+                      from: null,
+                      to: 259,
                       value: 1.2
                     }
                   ]
@@ -92,12 +109,14 @@ export class GraphTest2Component implements OnInit {
         }
       ]
     };
+    
 
     const destData: any = {
-      txid: '1',
+      txid: '1db0c47d1c7898e29c0c8b10c5f4528e3a7c273168614f048699f76922683f32',
       children: [
           {
               txid: 'stxo',
+              address: '1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa',
               from: '1',
               to: '2',
               value: 7,
@@ -106,34 +125,38 @@ export class GraphTest2Component implements OnInit {
                       txid: 'cluster1',
                       transactions: [
                           {
-                              txid: '2',
+                              txid: '3f68b9b2f2a67c7b0562c8f4582371802da7907950a8509c67f0d0ba0f06e7aa',
                               children: [
                                   {
                                       txid: 'stxo',
+                                      address: '3Cbq7aT1tY8kMxWLbitaG7yT6bPbKChq64',
                                       from: '2',
                                       to: '4',
                                       value: 20,
                                       children: [
                                           {
-                                              txid: '4',
+                                              txid: '4c1b99b5b8a2e6096d2f2e66175035e546f1a4fbc3940ec651baabbaf343fd7b',
                                               children: [
                                                   {
                                                       txid: 'stxo',
+                                                      address: '12c6DSiU4Rq3P4ZxziKxzrL5LmMBrzjrJX',
                                                       from: '4',
                                                       to: '6',
                                                       value: 6,
                                                       children: [
                                                           {
-                                                              txid: '6',
+                                                              txid: '5f6b46e6798aebf17d897c1e5f58b4e6f7875a84c66f1f4e854738f3e8a3b6f8',
                                                               children: [
                                                                   {
                                                                       txid: 'utxo',
+                                                                      address: '12c6DSiU4Rq3P4ZxziKxzrL5LmMBrzjrJX',
                                                                       from: '6',
                                                                       to: null,
                                                                       value: 0.6
                                                                   },
                                                                   {
                                                                       txid: 'utxo',
+                                                                      address: '1BgGZ9tcN4rm9KBzDn7KprQz87SZ26SAMH',
                                                                       from: '6',
                                                                       to: null,
                                                                       value: 12
@@ -148,30 +171,34 @@ export class GraphTest2Component implements OnInit {
                                   },
                                   {
                                       txid: 'stxo',
+                                      address: '1EHNa6Q4Jz2uvNExL497mE43ikXhwF6kZm',
                                       from: '2',
                                       to: '7',
                                       value: 79,
                                       children: [
                                           {
-                                              txid: '7',
+                                              txid: '6f3b6e6f8e7f3a5b3a8a8e3f2b4e8f9e8f7a4f3e7a2b5a3b5f1e8f6f3a1e9a6',
                                               children: [
                                                   {
                                                       txid: 'stxo',
+                                                      address: '1EHNa6Q4Jz2uvNExL497mE43ikXhwF6kZm',
                                                       from: '7',
                                                       to: '6',
                                                       value: 0.11,
                                                       children: [
                                                           {
-                                                              txid: '6',
+                                                              txid: '7f2b3e9e7f8e1a5e1a7b1e2a9e6f2a8e9a6e3b5f2b3e7e8e1f4a3e5b1f3a2',
                                                               children: [
                                                                   {
                                                                       txid: 'utxo',
+                                                                      address: '1EHNa6Q4Jz2uvNExL497mE43ikXhwF6kZm',
                                                                       from: '6',
                                                                       to: null,
                                                                       value: 0.6
                                                                   },
                                                                   {
                                                                       txid: 'utxo',
+                                                                      address: '1JKJgFuqUmoY9d9kL2PUmPoDz4knDgAKB',
                                                                       from: '6',
                                                                       to: null,
                                                                       value: 12
@@ -192,6 +219,7 @@ export class GraphTest2Component implements OnInit {
           },
           {
               txid: 'stxo',
+              address: '3EhWPgqz8D2ZPShJd6UqcpCr3daj3vCo7k',
               from: '1',
               to: '3',
               value: 8,
@@ -200,19 +228,21 @@ export class GraphTest2Component implements OnInit {
                       txid: 'cluster2',
                       transactions: [
                           {
-                              txid: '3',
+                              txid: '8f2b4e8f9e8f7a4f3e7a2b5a3b5f1e8f6f3a1e9a6b3e9e7f8e1a5e1a7b1e2',
                               children: [
                                   {
                                       txid: 'stxo',
+                                      address: '3FFp9uS1UqCiTNZbQiG1ue2UqUdDdJXY9D',
                                       from: '3',
                                       to: '5',
                                       value: 90,
                                       children: [
                                           {
-                                              txid: '5',
+                                              txid: '9e6f2a8e9a6e3b5f2b3e7e8e1f4a3e5b1f3a2f2b4e8f9e8f7a4f3e7a2b5a3',
                                               children: [
                                                   {
                                                       txid: 'stxo',
+                                                      address: '13p1ijLwsnrcuyqcTvJXkq2ASdXqcnEBLE',
                                                       from: '5',
                                                       to: '21',
                                                       value: 34
@@ -223,15 +253,17 @@ export class GraphTest2Component implements OnInit {
                                   },
                                   {
                                       txid: 'stxo',
+                                      address: '32ixVtW7pNfuv8R6wPfc6AqG3HvG8YbuFp',
                                       from: '6',
                                       to: '8',
                                       value: 670,
                                       children: [
                                           {
-                                              txid: '8',
+                                              txid: 'a1e9a6b3e9e7f8e1a5e1a7b1e2a9e6f2a8e9a6e3b5f2b3e7e8e1f4a3e5b1',
                                               children: [
                                                   {
                                                       txid: 'stxo',
+                                                      address: '38Pt2Kki2veFrVq9PGGXkJVSJPy3jhmTwF',
                                                       from: '8',
                                                       to: '24',
                                                       value: 1
@@ -242,15 +274,17 @@ export class GraphTest2Component implements OnInit {
                                   },
                                   {
                                       txid: 'stxo',
+                                      address: '38Pt2Kki2veFrVq9PGGXkJVSJPy3jhmTwF',
                                       from: '3',
                                       to: '9',
                                       value: 1.4,
                                       children: [
                                           {
-                                              txid: '9',
+                                              txid: 'b3e7a2b5a3b5f1e8f6f3a1e9a6f2b4e8f9e8f7a4f3e7a2b5a3b5f1e8f6f3',
                                               children: [
                                                   {
                                                       txid: 'utxo',
+                                                      address: '1EV8hdrBQwaMdFi5xZU3r9HGY31QzP78xD',
                                                       from: '9',
                                                       to: null,
                                                       value: 91
@@ -268,24 +302,27 @@ export class GraphTest2Component implements OnInit {
                               transactions: [
                                   {
                                       txid: 'stxo',
+                                      address: '1EduQkRiMdaLXySDnwNAAy6AoE2MPXf2Yx',
                                       from: '8',
                                       to: '21',
-                                      value: 670,
+                                      value: 34,
                                       children: [
                                           {
-                                              txid: '21',
+                                              txid: 'c1b9e2a9e6f2a8e9a6e3b5f2b3e7e8e1f4a3e5b1f3a2f2b4e8f9e8f7a4f3',
                                               children: [
                                                   {
                                                       txid: 'stxo',
+                                                      address: '1EduQkRiMdaLXySDnwNAAy6AoE2MPXf2Yx',
                                                       from: '21',
                                                       to: '22',
                                                       value: 15,
                                                       children: [
                                                           {
-                                                              txid: '22',
+                                                              txid: 'd1c1b9e2a9e6f2a8e9a6e3b5f2b3e7e8e1f4a3e5b1f3a2f2b4e8f9e8f7a4',
                                                               children: [
                                                                   {
                                                                       txid: 'utxo',
+                                                                      address: '1EduQkRiMdaLXySDnwNAAy6AoE2MPXf2Yx',
                                                                       from: '22',
                                                                       to: null,
                                                                       value: 5
@@ -296,6 +333,7 @@ export class GraphTest2Component implements OnInit {
                                                   },
                                                   {
                                                       txid: 'utxo',
+                                                      address: '15okgyzqBc5deTEpR3v3fBM4UU4oTBv2qa',
                                                       from: '21',
                                                       to: null,
                                                       value: 11
@@ -306,36 +344,41 @@ export class GraphTest2Component implements OnInit {
                                   },
                                   {
                                       txid: 'stxo',
+                                      address: '15okgyzqBc5deTEpR3v3fBM4UU4oTBv2qa',
                                       from: '8',
                                       to: '24',
-                                      value: 0,
+                                      value: 1,
                                       children: [
                                           {
-                                              txid: '24',
+                                              txid: 'e1a5e1a7b1e2a9e6f2a8e9a6e3b5f2b3e7e8e1f4a3e5b1f3a2f2b4e8f9e8',
                                               children: [
                                                   {
                                                       txid: 'stxo',
+                                                      address: '15okgyzqBc5deTEpR3v3fBM4UU4oTBv2qa',
                                                       from: '24',
                                                       to: '25',
                                                       value: 25,
                                                       children: [
                                                           {
-                                                              txid: '25',
+                                                              txid: 'f7a4f3e7a2b5a3b5f1e8f6f3a1e9a6f2b4e8f9e8f7a4f3e7a2b5a3b5f1',
                                                               children: [
                                                                   {
                                                                       txid: 'utxo',
+                                                                      address: '1BgGZ9tcN4rm9KBzDn7KprQz87SZ26SAMH',
                                                                       from: '25',
                                                                       to: null,
                                                                       value: 15
                                                                   },
                                                                   {
                                                                       txid: 'utxo',
+                                                                      address: '16o7YB9S4F5jMBFSycPrbKtJUUPfP7RyBp',
                                                                       from: '25',
                                                                       to: null,
                                                                       value: 0.1
                                                                   },
                                                                   {
                                                                       txid: 'utxo',
+                                                                      address: '3EhWPgqz8D2ZPShJd6UqcpCr3daj3vCo7k',
                                                                       from: '25',
                                                                       to: null,
                                                                       value: 0.002
@@ -346,15 +389,17 @@ export class GraphTest2Component implements OnInit {
                                                   },
                                                   {
                                                       txid: 'stxo',
+                                                      address: '1BgGZ9tcN4rm9KBzDn7KprQz87SZ26SAMH',
                                                       from: '24',
                                                       to: '26',
                                                       value: 22,
                                                       children: [
                                                           {
-                                                              txid: '26',
+                                                              txid: '60f7a4f3e7a2b5a3b5f1e8f6f3a1e9a6f2b4e8f9e8f7a4f3e7a2b5a3b5f1',
                                                               children: [
                                                                   {
                                                                       txid: 'utxo',
+                                                                      address: '12c6DSiU4Rq3P4ZxziKxzrL5LmMBrzjrJX',
                                                                       from: '26',
                                                                       to: null,
                                                                       value: 10
@@ -375,12 +420,13 @@ export class GraphTest2Component implements OnInit {
           },
           {
               txid: 'utxo',
+              address: '3EhWPgqz8D2ZPShJd6UqcpCr3daj3vCo7k',
               from: '1',
               to: null,
               value: 0.009
           }
       ]
-    };   
+    };
     
     this.width = this.screenWidth - this.margin.left - this.margin.right;
     this.height = this.screenHeight - this.margin.top - this.margin.bottom;
@@ -421,6 +467,24 @@ export class GraphTest2Component implements OnInit {
           } else {
             return (rect.left < 100 || rect.right > (window.innerWidth || document.documentElement.clientWidth) - 100);
           }
+        }
+
+        function flattenHierarchy(data: any): any[] {
+          let result: any[] = [];
+        
+          function flatten(item: any) {
+            result.push(item);
+            if (item.children && Array.isArray(item.children) && item.children.length > 0) {
+              item.children.forEach(flatten);
+            }
+          }
+        
+          if (Array.isArray(data)) {
+            data.forEach(flatten);
+          } else {
+            flatten(data);
+          }
+          return result;
         }
 
         if (!this.expandedCluster) {
@@ -699,7 +763,7 @@ export class GraphTest2Component implements OnInit {
     this.updateTree(this[root], side)
   }
 
-  updateTree(source:any, side: string) {
+  updateTree(source: any, side: string) {
     const tree = `${side}Tree` as keyof TreeComponent;
     const root = `${side}Root` as keyof TreeComponent;
     const links = `${side}Links` as keyof TreeComponent;
@@ -712,9 +776,9 @@ export class GraphTest2Component implements OnInit {
     const nodePairs: { source: any, target: any, initial: boolean }[] = []
     const nodeUniqueMap = new Map()
 
-    const transactionNodes = this[root].descendants().filter((d: any) => d.parent && !['cluster', 'txo', 'hidden'].some(keyword => d.data.txid.includes(keyword)));
+    const transactionHierarchy = this[root].descendants().filter((d: any) => d.parent && !['cluster', 'txo', 'hidden'].some(keyword => d.data.txid.includes(keyword)));
 
-    transactionNodes.forEach((d: any) => {
+    transactionHierarchy.forEach((d: any) => {
       const id = d.data.txid;
       if (!nodeUniqueMap.has(id)) {
         nodeUniqueMap.set(id, d);
@@ -800,18 +864,24 @@ export class GraphTest2Component implements OnInit {
 
     const height = right.x - left.x + this.margin.top + this.margin.bottom;
 
-    let i = 0
+    let i = 0;
     const transition = this.svg.transition()
       .duration(this.duration)
       .attr("viewBox", [-this.margin.left, left.x - this.margin.top, this.width, height])
       .tween("resize", window.ResizeObserver ? null : () => () => this.svg.dispatch("toggle"));
 
-    const node = this[gNode].selectAll("g.node").data(this[nodes], (d: any) => d.txid || (d.txid = ++i));
+    const node = this[gNode].selectAll("g.node").data(this[nodes], (d: any) => d.id || (d.id = ++i));
 
     const nodeEnter = node
       .enter()
       .append("g")
       .attr('class', 'node')
+      .attr('id', (d: any) => {
+        if (d.data.txid.includes('txo')) {
+          return `node-${d.data.address}`;
+        }
+        return `node-${d.data.txid}`;
+      })
       .attr("transform", function() {
         return "translate(" + source.y + "," + source.x + ")";
       })
@@ -830,9 +900,18 @@ export class GraphTest2Component implements OnInit {
       });
 
     // Cluster and root nodes
-    const clusterNodesUpdate = nodeUpdate.filter(function (d: any) {
+    const clusterNodesUpdate  = nodeUpdate.filter(function (d: any) {
       return d.data.txid.includes('cluster');
     })
+
+    // Transaction nodes
+    const transactionNodesUpdate = nodeUpdate.filter(function (d: any) {
+        return !d.data.txid.includes('cluster') && !d.data.txid.includes('txo');
+    });
+
+    const txoNodesUpdate  = nodeUpdate.filter(function(d: any) {
+      return d.data.txid.includes('txo');
+    });
 
     clusterNodesUpdate.selectAll(".transactionRect, .transactionText, .transactionFullScreenIcon")
       .transition(transition)
@@ -840,25 +919,30 @@ export class GraphTest2Component implements OnInit {
       .style("opacity", 0)
       .remove();
 
-    // Transaction nodes
-    const transactionNodesUpdate = nodeUpdate.filter(function (d: any) {
-        return !d.data.txid.includes('cluster') && !d.data.txid.includes('txo');
-    });
-
     transactionNodesUpdate.selectAll(".clusterRect, .clusterText")
       .transition(transition)
       .duration(this.duration)
       .style("opacity", 0)
       .remove();
 
-    const txoNodesUpdate = nodeUpdate.filter(function(d: any) {
-      return d.data.txid.includes('txo');
-    });
+    txoNodesUpdate.selectAll(".clusterRect, .clusterText")
+      .transition(transition)
+      .duration(this.duration)
+      .style("opacity", 0)
+      .remove();
 
-    txoNodesUpdate
+    txoNodesUpdate 
       .append('circle')
       .attr("class", "txoCircle")
-      .style("stroke", "none")
+      .attr("class", (d: any) => {
+        if (d.data.searched) {
+          return "highlighted-node"
+        } else {
+          return
+        }
+      })
+      .attr('stroke', 'none')
+      .attr("stroke-opacity", "1")
       .attr("r", 40)
       .attr("fill", function(d: any) {
         return d.data.txid === 'utxo' ? 'green' : 'red';
@@ -866,7 +950,7 @@ export class GraphTest2Component implements OnInit {
       .attr("x", -40)
       .attr("y", -40);
 
-    txoNodesUpdate
+    txoNodesUpdate 
       .append("text")
       .style("fill", "white")
       .attr("dy", ".35em")
@@ -875,9 +959,16 @@ export class GraphTest2Component implements OnInit {
         return d.data.value;
       });
 
-    clusterNodesUpdate
+    clusterNodesUpdate 
       .append("rect")
       .attr("class", "clusterRect")
+      .attr("class", (d: any) => {
+        if (d.data.searched) {
+          return "highlighted-node"
+        } else {
+          return
+        }
+      })
       .style("fill", "var(--theme-bg-color)")
       .attr("stroke-width", 1)
       .attr("stroke", 'cyan')
@@ -887,9 +978,16 @@ export class GraphTest2Component implements OnInit {
       .attr("width", 150)
       .attr("height", 100)
 
-    transactionNodesUpdate
+    transactionNodesUpdate 
       .append("rect")
       .attr("class", "transactionRect")
+      .attr("class", (d: any) => {
+        if (d.data.searched) {
+          return "highlighted-node"
+        } else {
+          return
+        }
+      })
       .attr("rx", 6)
       .attr("ry", 6)
       .attr("stroke-width", 3)
@@ -903,7 +1001,7 @@ export class GraphTest2Component implements OnInit {
       });
       
     // Transaction info summary
-    transactionNodesUpdate
+    transactionNodesUpdate 
       .append("foreignObject")
       .attr("class", "transactionText")
       .attr("width", 150)
@@ -924,7 +1022,7 @@ export class GraphTest2Component implements OnInit {
       })
 
     // Full screen icon on the top right
-    transactionNodesUpdate
+    transactionNodesUpdate 
       .append("foreignObject")
       .attr("class", "transactionFullScreenIcon")
       .attr("width", 150)
@@ -947,12 +1045,6 @@ export class GraphTest2Component implements OnInit {
           transactionDetail.classList.add("show");
         };
       });
-
-    transactionNodesUpdate.selectAll(".transactionRect, .transactionText, .transactionFullScreenIcon")
-      .style("opacity", 0)
-      .transition(transition)
-      .duration(this.duration)
-      .style("opacity", 1)
 
     const nodeExit = node
       .exit()
@@ -996,7 +1088,7 @@ export class GraphTest2Component implements OnInit {
       .exit()
       .transition(transition)
       .duration(this.duration)
-      .attr("d", () => {
+      .attr("d", (d: any) => {
         const o = { 
           x: source.x, 
           y: source.y
@@ -1041,7 +1133,7 @@ export class GraphTest2Component implements OnInit {
 
     const createLinkTextArrow = (linkData: any, source: any, i: number) => {
       const linkTextAndArrow = this[gLink].selectAll('.link-text-group'+i)
-        .data(linkData, (d: any) => d.id)
+        .data(linkData, (d: any) => d.target.id)
 
       const linkTextAndArrowEnter = linkTextAndArrow.enter()
         .append("g")
@@ -1055,30 +1147,6 @@ export class GraphTest2Component implements OnInit {
         .duration(this.duration)
         .style("opacity", 0)
         .remove();
-
-      /*
-      linkTextAndArrowUpdate
-        .append("text")
-        .attr("class", "link-text")
-        .attr("dy", ".35em")
-        .attr("text-anchor", "middle")
-        .style("fill", "white")
-        .style("text-shadow", "0 0 10px rgba(255, 255, 255, 0.8)")
-        .text((d: any) => {
-          const source = d.source.data;
-          const target = d.target.data;
-
-          if (!['cluster', 'txo', 'hidden'].some(keyword => target.txid.includes(keyword))) {
-            if (side === 'origin') {
-              const vinData = source.vin.find((input: any) => input.txid === target.txid);
-              return vinData ? target.vout[vinData.vout].value : "";
-            } else {
-              const voutData = target.vin.find((input: any) => input.txid === source.txid);
-              return voutData ? source.vout[voutData.vout].value : "";
-            };
-          };
-        });
-        */
 
       linkTextAndArrowUpdate
         .append("text")
@@ -1188,5 +1256,124 @@ export class GraphTest2Component implements OnInit {
             ${ex - w * xrvs}  ${ey}
           L ${ex} ${ey}
     `;
+  }
+
+  search() {
+    const searchHierarchy = (transactions: any, found: boolean, job: boolean, count: number): [boolean, number] => {
+      transactions.forEach((transaction: any) => {
+        if (!job) {
+          if (transaction.txid.includes('txo')) {
+            if (transaction.address === this.searchQuery) {
+              transaction.searched = job;
+            }
+          } else {
+            if (transaction.txid === this.searchQuery) {
+              transaction.searched = job;
+            }
+          }
+        } else {
+          if (searchType === 'Wallet Address' && transaction.txid.includes('txo')) {
+            if (transaction.address === this.searchQuery) {
+              transaction.searched = job;
+              found = true;
+              count++;
+            }
+          } else {
+            if (transaction.txid === this.searchQuery) {
+              transaction.searched = job;
+              found = true;
+              count++;
+            }
+          }
+        }
+
+        if (transaction.children) {
+          const [newFound, newCount] = searchHierarchy(transaction.children, found, job, 0)
+          if (newFound) {
+            found = true;
+            count += newCount
+          }
+        };
+      });
+      return [found, count];
+    }
+
+    const removeSearched = (nodes: any): void => {
+      nodes.forEach((d: any) => {
+        d.data.searched = false;
+        if (d.data.txid.includes('cluster')) {
+          searchHierarchy(d.data.transactions, false, false, 0);
+        };
+      });
+    };
+
+    removeSearched(this.originNodes); removeSearched(this.destNodes);
+
+    const transactionIdRegex = /^[0-9a-fA-F]{64}$/;
+    const walletAddressRegex = /^(1|3|[13])[a-km-zA-HJ-NP-Z1-9]{25,34}$/;
+
+    this.showErrorMessage = false;
+    this.showSuccessMessage = false;
+
+    if (this.searchQuery === '') {
+      this.showErrorMessage = true;
+      this.searchErrorMessage = 'Field is Empty';
+      return
+    }
+
+    let searchType = '';
+
+    if (transactionIdRegex.test(this.searchQuery)) {
+      searchType = 'Transaction';
+    } else if (walletAddressRegex.test(this.searchQuery)) {
+      searchType = 'Wallet Address';
+    } else {
+      this.showErrorMessage = true;
+      this.searchErrorMessage = 'Please Enter a Valid Transaction ID or Address';
+      return
+    }
+
+    this.showStatusMessage = true;
+    let count = 0;
+
+    const searchNodes = (nodes: any) => {
+      nodes.forEach((d: any) => {
+        if (d.data.txid.includes('cluster')) {
+          const [foundInCluster, newCount] = searchHierarchy(d.data.transactions, false, true, 0);
+          d.data.searched = foundInCluster;
+          count += newCount;
+        } else if (searchType === 'Wallet Address' && d.data.txid.includes('txo')) {
+          if (d.data.address === this.searchQuery) { 
+            d.data.searched = true; 
+            count++;
+          };
+        } else {
+          if (d.data.txid === this.searchQuery) {
+            d.data.searched = true;
+            count++;
+          };
+        };
+      });
+    };
+
+    this.searchStatusMessage = `Searching for ${searchType} in Origins`; searchNodes(this.originNodes); 
+    this.searchStatusMessage = `Searching for ${searchType} in Destinations`; searchNodes(this.destNodes)
+
+    this.showStatusMessage = false;
+
+    if (count === 0) {
+      this.showErrorMessage = true;
+      this.searchErrorMessage = `No ${searchType} Found`;
+    } else {
+      this.showSuccessMessage = true;
+      if (searchType === 'Wallet Address') {
+        this.searchSuccessMessage = `Found ${count} Outputs Belonging To ${searchType}`;
+      } else {
+        this.searchSuccessMessage = `Found ${searchType}`;
+      }
+
+      this.updateTree(this.originRoot, 'origin');
+      this.updateTree(this.destRoot, 'dest');
+    }
   }
 }

@@ -29,27 +29,36 @@ export class DataRetrievalService {
   
         const numChildren = data.children.length;
   
-        root.children.push(this.groupTransactions(0, data.children[0]));
-        root.children.push(this.groupTransactions(1, data.children[0]));
-
+        root.children.push(this.groupTransactions('0', data.children[0], true));
+        root.children.push(this.groupTransactions('1', data.children[0], true));
+        root.children.push(this.groupTransactions('2', data.children[0], true));
+        
         resolve(root);
       });
     });
   }
-  
 
-  groupTransactions(groupid: number, transactions: any) {
-    return {
-      txid: transactions.txid,
-      from: transactions.from,
-      to: transactions.to+groupid,
-      value: transactions.value,
-      children: [
-        {
-          txid: `cluster${groupid}`,
-          transactions: [transactions]
-        }
-      ]
-    };
+  groupTransactions(groupid: string, transactions: any, rootConnected: boolean) {
+    if (rootConnected) {
+      return {
+        txid: transactions.txid,
+        from: transactions.from,
+        to: transactions.to+groupid,
+        value: transactions.value,
+        children: [
+          {
+            txid: `cluster${groupid}`,
+            transactions: [transactions.children[0]],
+            children: []
+          }
+        ]
+      };
+    } else {
+      return {
+        txid: `cluster${groupid}`,
+        transactions: [transactions],
+        children: []
+      }
+    }
   }
 }
