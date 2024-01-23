@@ -1,3 +1,24 @@
+<div class="search-bar-container">
+  <div class="search-container">
+    <input type="text" class="search-bar" placeholder="Search Transaction or Address..." [(ngModel)]="searchQuery" [ngClass]="{ 'invalid-input': showErrorMessage }">
+    <button class="search-button" (click)="search()">
+      <i class="fas fa-location-arrow"></i>
+    </button>
+  </div>
+
+  <div class="error-message" *ngIf="showErrorMessage">
+    {{ searchErrorMessage }}
+  </div>
+
+  <div class="search-status" *ngIf="showStatusMessage">
+    {{ searchStatusMessage }} <mat-spinner [diameter]="20"></mat-spinner>
+  </div>
+
+  <div class="success-message" *ngIf="showSuccessMessage">
+    {{ searchSuccessMessage }}
+  </div>
+</div>
+
 <div class="legend">
   <h5>Node Legend</h5>
   <div class="legend-item">
@@ -22,7 +43,6 @@
 
 <div id="transaction-detail" class="transaction-detail">
     <div class="transaction-detail-content">
-      
       <p>More transaction info</p>
       <button (click)="closeTransactionDetailPopover()" id="closeTransactionDetail">Close</button>
     </div>
