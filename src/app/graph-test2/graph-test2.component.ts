@@ -19,6 +19,14 @@ type TreeComponent = {
   gOriginNode: any;
   gOriginLink: any;
   originDuplicateTxPairs: any;
+  pathTree: any;
+  pathRoot: any;
+  pathLinks: any;
+  pathNodes: any;
+  gPath: any;
+  gPathNode: any;
+  gPathLink: any;
+  pathDuplicateTxPairs: any;
 };
 
 @Component({
@@ -46,6 +54,14 @@ export class GraphTest2Component implements OnInit {
   private gOriginNode: any;
   private destDuplicateTxPairs: any;
   private originDuplicateTxPairs: any;
+  private pathTree: any;
+  private pathRoot: any;
+  private pathLinks: any;
+  private pathNodes: any;
+  private gPath: any;
+  private gPathNode: any;
+  private gPathLink: any;
+  private pathDuplicateTxPairs: any;
   private margin = { top: 20, right: 90, bottom: 30, left: 90 };
   private screenWidth: any;
   private screenHeight: any;
@@ -56,7 +72,7 @@ export class GraphTest2Component implements OnInit {
   private newChildren: any;
   private zoom: any;
   private transactionNodeSize = { width: 150, height: 200 };
-  private groupClosed: string = '';
+  private groupClosed: string = ''
   searchQuery: string = '';
   showErrorMessage: boolean = false;
   searchErrorMessage: string = '';
@@ -64,8 +80,10 @@ export class GraphTest2Component implements OnInit {
   searchStatusMessage: string = '';
   showSuccessMessage: boolean = false;
   searchSuccessMessage: string = '';
+  searchResult: any[] = [];
+  private unmodifiedTrueData: any;
 
-  constructor(
+  constructor( 
   ) {  }
 
   ngOnInit() {
@@ -835,6 +853,8 @@ export class GraphTest2Component implements OnInit {
       if (d.data.txid === 'hidden' && Math.abs(maxHiddenY) < Math.abs(d.y)) {
           maxHiddenY = d.y;
       };
+
+      d.data.side = side;
     });
 
     hiddenNodes.forEach((d: any) => {
@@ -1235,6 +1255,7 @@ export class GraphTest2Component implements OnInit {
       return [found, count];
     }
 
+    // Set every searched field to false
     const removeSearched = (nodes: any): void => {
       nodes.forEach((d: any) => {
         if (d.data.txid.includes('cluster')) {
@@ -1244,19 +1265,30 @@ export class GraphTest2Component implements OnInit {
       });
     };
 
+    this.showErrorMessage = false;
+    this.showSuccessMessage = false;
+    this.searchResult = [];
+
+    // Disable every node highlighting class.
+    const removeHighlighting = (gNode: any) => {
+      const shapes = ['rect', 'circle'];
+      shapes.forEach((shape: string) => {
+        gNode.selectAll(`.node ${shape}`).classed('highlighted-node', false)
+        gNode.selectAll(`.node ${shape}`).classed('highlighted-node', false)
+      });
+    };
+
+    removeHighlighting(this.gOriginNode); removeHighlighting(this.gDestNode);
+    removeSearched(this.originNodes); removeSearched(this.destNodes); 
+
     if (this.searchQuery === '') {
       this.showErrorMessage = true;
       this.searchErrorMessage = 'Field is Empty';
-      return
-    }
-
-    removeSearched(this.originNodes); removeSearched(this.destNodes);
+      return;
+    };
 
     const transactionIdRegex = /^[0-9a-fA-F]{64}$/;
     const walletAddressRegex = /^(1|3|[13])[a-km-zA-HJ-NP-Z1-9]{25,34}$/;
-
-    this.showErrorMessage = false;
-    this.showSuccessMessage = false;
 
     let searchType = '';
 
@@ -1267,8 +1299,8 @@ export class GraphTest2Component implements OnInit {
     } else {
       this.showErrorMessage = true;
       this.searchErrorMessage = 'Please Enter a Valid Transaction ID or Address';
-      return
-    }
+      return;
+    };
 
     this.showStatusMessage = true;
     let count = 0;
@@ -1282,11 +1314,13 @@ export class GraphTest2Component implements OnInit {
         } else if (searchType === 'Wallet Address' && d.data.txid.includes('txo')) {
           if (d.data.address === this.searchQuery) { 
             d.data.searched = true; 
+            this.searchResult.push({d});
             count++;
           };
         } else {
           if (d.data.txid === this.searchQuery) {
             d.data.searched = true;
+            this.searchResult.push(d);
             count++;
           };
         };
@@ -1294,7 +1328,7 @@ export class GraphTest2Component implements OnInit {
     };
 
     this.searchStatusMessage = `Searching for ${searchType} in Origins`; searchNodes(this.originNodes); 
-    this.searchStatusMessage = `Searching for ${searchType} in Destinations`; searchNodes(this.destNodes)
+    this.searchStatusMessage = `Searching for ${searchType} in Destinations`; searchNodes(this.destNodes);
 
     this.showStatusMessage = false;
 
@@ -1302,19 +1336,88 @@ export class GraphTest2Component implements OnInit {
       this.showErrorMessage = true;
       this.searchErrorMessage = `No ${searchType} Found`;
     } else {
+      this.searchResult.forEach((result: any, index: number) => {
+        let id: string;
+        let info: string;
+        let isTX: boolean;
+  
+        if (result.data.txid.includes('txo')) {
+          id = result.data.address;
+          const spentString = result.data.spent ? 'Spent' : 'Unspent';
+          info = `${spentString} Output Value: ${result.data.value}, TXID From: ${result.data.from}, TXID To: ${result.data.to}`;
+          isTX = false;
+        } else {
+          id = result.data.txid;
+          info = `TXID: ${result.data.txid}`;
+          isTX = true;
+        }
+        this.searchResult[index] = { id: id, info: info, isTransaction: isTX, side: result.data.side };
+      });
+      
       this.showSuccessMessage = true;
+
       if (searchType === 'Wallet Address') {
         this.searchSuccessMessage = `Found ${count} Outputs Belonging To ${searchType}`;
       } else {
         this.searchSuccessMessage = `Found ${searchType}`;
-      }
+      };
 
     this.updateTree(this.destRoot, 'dest')
     this.updateTree(this.originRoot, 'origin');
-    }
+    };
   }
 
-  flattenHierarchy(data: any): any[] {
+  getPath(target: string, side: string) {
+    const nodes = `${side}Nodes` as keyof TreeComponent;
+    const targetNode = this[nodes].find((node: any) => node.data.txid === target);
+    const path = this.getAncestors(targetNode).reverse();
+
+    function convertToHierarchy(path: any[]): any {
+      const rootNode: any = { children: null };
+      let currentNode = rootNode;
+    
+      path.forEach((node, index) => {
+        const { children, ...newNode } = { ...node.data, children: index === path.length - 1 ? null : [] };
+        currentNode.children = [newNode];
+        currentNode = newNode;
+      });
+    
+      return rootNode.children[0];
+    }
+    
+    const pathData = convertToHierarchy(path);
+
+    this.gOrigin
+            .transition()
+            .duration(this.duration)
+            .remove();
+    
+    this.gDest
+      .transition()
+      .duration(this.duration)
+      .remove();
+
+    this.initializeTree(pathData, 'path', true);
+  }
+
+  removePath() {
+    this.initializeTree(null, 'origin', false);
+    this.initializeTree(null, 'dest', false);
+  }
+
+  private getAncestors(node: any) {
+    const ancestors = [];
+    let currentNode = node;
+
+    while (currentNode) {
+        ancestors.push(currentNode);
+        currentNode = currentNode.parent;
+    }
+
+    return ancestors;
+  }
+
+  private flattenHierarchy(data: any): any[] {
     let result: any[] = [];
   
     function flatten(item: any) {

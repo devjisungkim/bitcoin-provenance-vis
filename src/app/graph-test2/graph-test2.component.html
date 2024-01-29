@@ -1,21 +1,28 @@
 <div class="search-bar-container">
   <div class="search-container">
-    <input type="text" class="search-bar" placeholder="Search Transaction or Address..." [(ngModel)]="searchQuery" [ngClass]="{ 'invalid-input': showErrorMessage }">
+    <input type="text" class="search-bar" placeholder="Locate Transaction or Address..." [(ngModel)]="searchQuery" [ngClass]="{ 'invalid-input': showErrorMessage }">
     <button class="search-button" (click)="search()">
       <i class="fas fa-location-arrow"></i>
     </button>
   </div>
 
-  <div class="error-message" *ngIf="showErrorMessage">
-    {{ searchErrorMessage }}
-  </div>
-
-  <div class="search-status" *ngIf="showStatusMessage">
-    {{ searchStatusMessage }} <mat-spinner [diameter]="20"></mat-spinner>
-  </div>
-
-  <div class="success-message" *ngIf="showSuccessMessage">
-    {{ searchSuccessMessage }}
+  <div class="message-container">
+    <div class="error-msg" *ngIf="showErrorMessage">
+      {{ searchErrorMessage }}
+    </div>
+  
+    <div class="search-status" *ngIf="showStatusMessage">
+      {{ searchStatusMessage }} <mat-spinner [diameter]="20"></mat-spinner>
+    </div>
+  
+    <div class="success-msg" *ngIf="showSuccessMessage">
+      {{ searchSuccessMessage }}
+      <div class="search-results">
+        <div *ngFor="let result of searchResult" class="search-result">
+          {{ result.info }} <button *ngIf="result.isTransaction" class="path-button" (click)="getPath(result.id, result.side)">Get Path</button>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 

@@ -129,9 +129,18 @@
     color: var(--bitcoin-theme);
 }
   
-.error-message {
-    padding: 15px;
-    margin-top: 10px;
+.message-container {
+    display: flex;
+    left: 0;
+    width: 100%;
+    background-color: black;
+    z-index: 1;
+    max-height: 200px;
+    overflow-y: auto;
+    box-sizing: border-box;
+}
+
+.error-msg {
     color: red;
 }
 
@@ -139,16 +148,35 @@
     display: flex;
     padding: 15px;
     margin-top: 10px;
-    mat-spinner circle {
-        stroke: var(--bitcoin-theme);
-    }
 }
 
-.success-message {
-    padding: 15px;
-    margin-top: 10px;
+.search-status mat-spinner circle {
+    stroke: var(--bitcoin-theme);
+}
+
+.success-msg {
     color: greenyellow;
 }
+
+.search-results {
+    display: flex;
+    flex-direction: column;
+}
+
+.search-result {
+    padding: 8px;
+    cursor: pointer;
+    border-bottom: 1px solid #ddd;
+}
+
+.search-result:last-child {
+    border-bottom: none;
+}
+
+.search-result:hover {
+    background-color: #f0f0f0;
+}
+
 
 .invalid-input {
     border: 2px solid red;
