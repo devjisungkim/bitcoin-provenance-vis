@@ -10,15 +10,25 @@ export class DataRetrievalService {
   url: string = '/assets/';
 
   constructor(
-    private http: HttpClient
-    ) { }
-
-  getDestinationData(txid: string): Observable<JSON> {
+    private http: HttpClient,
+    ) {  }
+    
+  requestDestination(txid: string): Observable<JSON> {
     const jsonURL = this.url + 'dest_' + txid + '.json';
     return this.http.get<JSON>(jsonURL);
   }
 
-  // this function groups the dummy data (re-uses it for multiple groups)
+  requestOrigin(txid: string): Observable<JSON> {
+    const jsonURL = this.url + 'origin_' + txid + '.json';
+    return this.http.get<JSON>(jsonURL);
+  }
+
+  requestPath(txid1:string, txid2: string): Observable<JSON> {
+    const jsonURL = this.url + 'path_' + txid1 + txid2 + '.json';
+    return this.http.get<JSON>(jsonURL);
+  }
+
+  /*
   generatePerformanceData(txid: string): Promise<{ txid: string; children: any[] }> {
     return new Promise((resolve) => {
       this.getDestinationData(txid).subscribe((data: any) => {
@@ -37,7 +47,9 @@ export class DataRetrievalService {
       });
     });
   }
+  */
 
+  /*
   groupTransactions(groupid: string, transactions: any, rootConnected: boolean) {
     if (rootConnected) {
       return {
@@ -61,4 +73,5 @@ export class DataRetrievalService {
       }
     }
   }
+  */
 }

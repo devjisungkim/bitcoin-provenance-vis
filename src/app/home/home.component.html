@@ -1,11 +1,31 @@
 <div class="container">
-  <div id="home">
-    <h1 class="mb-5">Welcome to <span id="web-name">BitcoinTrace</span></h1>
-    <h4 class="mb-5">Search for a Bitcoin transaction using its hash ID</h4>
-    <mdb-form-control>
-      <input mdbInput type="text" class="form-control"/>
-      <label mdbLabel class="form-label" for="typeText">Search Transaction</label>
-    </mdb-form-control>
+  <div class="home">
+    <h1 class="mb-5">Welcome to <span class="title">BitcoinTrace</span></h1>
+
+    <div class="search-container">
+      <h4 class="mb-3">Track the Origins and Destinations of a Bitcoin Transaction</h4>
+      
+      <form [formGroup]="searchForm" class="form-inline">
+        <div class="form-group mb-2 mr-sm-2">
+          <input type="text" class="form-control" id="searchTransaction" placeholder="Search Transaction" formControlName="searchTransaction">
+        </div>
+        <button type="button" class="btn btn-custom mb-2" (click)="visualizeTransaction()">Track</button>
+      </form>
+    </div>
+
+    <div class="path-container">
+      <h4 class="mb-3">View the Path Between Two Transactions</h4>
+      
+      <form [formGroup]="pathForm" class="form-inline">
+        <div class="form-group mb-2 mr-sm-2">
+          <input type="text" class="form-control" id="search-from" placeholder="Transaction 1" formControlName="path-from">
+        </div>
+        <i class="fas fa-arrows-alt-h fa-lg fa-rotate-90"></i>
+        <div class="form-group mb-2 mr-sm-2">
+          <input type="text" class="form-control" id="search-to" placeholder="Transaction 2" formControlName="path-to">
+        </div>
+        <button type="button" class="btn btn-custom mb-2" (click)="visualizePath()">View Path</button>
+      </form>
+    </div>
   </div>
-  <img src="assets/bitcoin-logo-png-transparent.png" alt="Image" />
 </div>

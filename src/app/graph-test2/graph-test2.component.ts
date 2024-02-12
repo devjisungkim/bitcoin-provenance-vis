@@ -1,6 +1,9 @@
 import { Component, OnInit, ViewEncapsulation } from '@angular/core';
+import { ActivatedRoute, Router } from '@angular/router';
 import * as d3 from 'd3';
 import { parse, stringify } from 'flatted';
+import { DataRetrievalService } from 'src/services/data-retrieval/data-retrieval.service';
+import { SharedDataService } from 'src/services/shared-data/shared-data.service';
 
 type TreeComponent = {
   destTree: any;
@@ -38,22 +41,22 @@ type TreeComponent = {
 export class GraphTest2Component implements OnInit {
   private svg: any;
   private g: any;
-  private gDest: any;
   private gOrigin: any;
-  private destTree: any;
   private originTree: any;
-  private destRoot: any;
   private originRoot: any;
-  private destNodes: any;
   private originNodes: any;
-  private destLinks: any;
   private originLinks: any;
-  private gDestLink: any;
-  private gDestNode: any;
-  private gOriginLink: any;
   private gOriginNode: any;
-  private destDuplicateTxPairs: any;
+  private gOriginLink: any;
   private originDuplicateTxPairs: any;
+  private gDest: any;
+  private destTree: any;
+  private destRoot: any;
+  private destNodes: any;
+  private destLinks: any;
+  private gDestNode: any;
+  private gDestLink: any;
+  private destDuplicateTxPairs: any;
   private pathTree: any;
   private pathRoot: any;
   private pathLinks: any;
@@ -81,645 +84,315 @@ export class GraphTest2Component implements OnInit {
   showSuccessMessage: boolean = false;
   searchSuccessMessage: string = '';
   searchResult: any[] = [];
-  private unmodifiedTrueData: any;
+  transactionDetail: any;
 
   constructor( 
+    private router: Router,
+    private route: ActivatedRoute,
+    private sharedDataService: SharedDataService,
+    private dataRetrievalService: DataRetrievalService
   ) {  }
 
-  ngOnInit() {
+  ngOnInit(): void {
     this.screenWidth = window.innerWidth;
     this.screenHeight = window.innerHeight; 
 
-    const originData = {
-      txid: '1db0c47d1c7898e29c0c8b10c5f4528e3a7c273168614f048699f76922683f32',
-      children: [
-        {
-          txid: 'stxo',
-          address: '1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa',
-          from: 259,
-          to: 1,
-          value: 8.801,
-          children: [
-            {
-              txid: 'cluster',
-              transactions: [
-                {
-                  txid: '2a5b367e8d6c78e8b7dfde1f607dc3ebe458e56a27850e1d5c3eaf54b25f141',
-                  children: [
-                    {
-                      txid: 'stxo',
-                      address: '3Cbq7aT1tY8kMxWLbitaG7yT6bPbKChq64',
-                      from: null,
-                      to: 259,
-                      value: 0.02
-                    },
-                    {
-                      txid: 'stxo',
-                      address: '12c6DSiU4Rq3P4ZxziKxzrL5LmMBrzjrJX',
-                      from: null,
-                      to: 259,
-                      value: 1.2
-                    }
-                  ]
-                }
-              ]
-            }
-          ]
-        }
-      ]
-    };
-    
+    this.route.params.subscribe(params => {
+      const type = params['type'];
 
-    const destData: any = {
-      txid: '1db0c47d1c7898e29c0c8b10c5f4528e3a7c273168614f048699f76922683f32',
-      children: [
-          {
-              txid: 'stxo',
-              address: '1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa',
-              from: '1',
-              to: '2',
-              value: 7,
-              children: [
-                  {
-                      txid: 'cluster1',
-                      transactions: [
-                          {
-                              txid: '3f68b9b2f2a67c7b0562c8f4582371802da7907950a8509c67f0d0ba0f06e7aa',
-                              children: [
-                                  {
-                                      txid: 'stxo',
-                                      address: '3Cbq7aT1tY8kMxWLbitaG7yT6bPbKChq64',
-                                      from: '2',
-                                      to: '4',
-                                      value: 20,
-                                      children: [
-                                          {
-                                              txid: '4c1b99b5b8a2e6096d2f2e66175035e546f1a4fbc3940ec651baabbaf343fd7b',
-                                              children: [
-                                                  {
-                                                      txid: 'stxo',
-                                                      address: '12c6DSiU4Rq3P4ZxziKxzrL5LmMBrzjrJX',
-                                                      from: '4',
-                                                      to: '6',
-                                                      value: 6,
-                                                      children: [
-                                                          {
-                                                              txid: '5f6b46e6798aebf17d897c1e5f58b4e6f7875a84c66f1f4e854738f3e8a3b6f8',
-                                                              children: [
-                                                                  {
-                                                                      txid: 'utxo',
-                                                                      address: '12c6DSiU4Rq3P4ZxziKxzrL5LmMBrzjrJX',
-                                                                      from: '6',
-                                                                      to: null,
-                                                                      value: 0.6
-                                                                  },
-                                                                  {
-                                                                      txid: 'utxo',
-                                                                      address: '1BgGZ9tcN4rm9KBzDn7KprQz87SZ26SAMH',
-                                                                      from: '6',
-                                                                      to: null,
-                                                                      value: 12
-                                                                  }
-                                                              ]
-                                                          } 
-                                                      ]
-                                                  }
-                                              ]
-                                          }
-                                      ]
-                                  },
-                                  {
-                                      txid: 'stxo',
-                                      address: '1EHNa6Q4Jz2uvNExL497mE43ikXhwF6kZm',
-                                      from: '2',
-                                      to: '7',
-                                      value: 79,
-                                      children: [
-                                          {
-                                              txid: '6f3b6e6f8e7f3a5b3a8a8e3f2b4e8f9e8f7a4f3e7a2b5a3b5f1e8f6f3a1e9a61',
-                                              children: [
-                                                  {
-                                                      txid: 'stxo',
-                                                      address: '1EHNa6Q4Jz2uvNExL497mE43ikXhwF6kZm',
-                                                      from: '7',
-                                                      to: '6',
-                                                      value: 0.11,
-                                                      children: [
-                                                          {
-                                                              txid: '5f6b46e6798aebf17d897c1e5f58b4e6f7875a84c66f1f4e854738f3e8a3b6f8',
-                                                              children: [
-                                                                  {
-                                                                      txid: 'utxo',
-                                                                      address: '1EHNa6Q4Jz2uvNExL497mE43ikXhwF6kZm',
-                                                                      from: '6',
-                                                                      to: null,
-                                                                      value: 0.6
-                                                                  },
-                                                                  {
-                                                                      txid: 'utxo',
-                                                                      address: '1JKJgFuqUmoY9d9kL2PUmPoDz4knDgAKB',
-                                                                      from: '6',
-                                                                      to: null,
-                                                                      value: 12
-                                                                  }
-                                                              ]
-                                                          }
-                                                      ]
-                                                  }
-                                              ]
-                                          }
-                                      ]
-                                  }
-                              ]
-                          }
-                      ]
-                  }
-              ]
-          },
-          {
-              txid: 'stxo',
-              address: '3EhWPgqz8D2ZPShJd6UqcpCr3daj3vCo7k',
-              from: '1',
-              to: '3',
-              value: 8,
-              children: [
-                  {
-                      txid: 'cluster2',
-                      transactions: [
-                          {
-                              txid: '8f2b4e8f9e8f7a4f3e7a2b5a3b5f1e8f6f3a1e9a6b3e9e7f8e1a5e1a7b1e2123',
-                              children: [
-                                  {
-                                      txid: 'stxo',
-                                      address: '3FFp9uS1UqCiTNZbQiG1ue2UqUdDdJXY9D',
-                                      from: '3',
-                                      to: '5',
-                                      value: 90,
-                                      children: [
-                                          {
-                                              txid: '9e6f2a8e9a6e3b5f2b3e7e8e1f4a3e5b1f3a2f2b4e8f9e8f7a4f3e7a2b5a3c33',
-                                              children: [
-                                                  {
-                                                      txid: 'stxo',
-                                                      address: '13p1ijLwsnrcuyqcTvJXkq2ASdXqcnEBLE',
-                                                      from: '5',
-                                                      to: '21',
-                                                      value: 34
-                                                  }
-                                              ]
-                                          }
-                                      ]
-                                  },
-                                  {
-                                      txid: 'stxo',
-                                      address: '32ixVtW7pNfuv8R6wPfc6AqG3HvG8YbuFp',
-                                      from: '6',
-                                      to: '8',
-                                      value: 670,
-                                      children: [
-                                          {
-                                              txid: 'a1e9a6b3e9e7f8e1a5e1a7b1e2a9e6f2a8e9a6e3b5f2b3e7e8e1f4a3e5b10smd',
-                                              children: [
-                                                  {
-                                                      txid: 'stxo',
-                                                      address: '38Pt2Kki2veFrVq9PGGXkJVSJPy3jhmTwF',
-                                                      from: '8',
-                                                      to: '24',
-                                                      value: 1
-                                                  }
-                                              ]
-                                          }
-                                      ]
-                                  },
-                                  {
-                                      txid: 'stxo',
-                                      address: '38Pt2Kki2veFrVq9PGGXkJVSJPy3jhmTwF',
-                                      from: '3',
-                                      to: '9',
-                                      value: 1.4,
-                                      children: [
-                                          {
-                                              txid: 'b3e7a2b5a3b5f1e8f6f3a1e9a6f2b4e8f9e8f7a4f3e7a2b5a3b5f1e8f6f31234',
-                                              children: [
-                                                  {
-                                                      txid: 'utxo',
-                                                      address: '1EV8hdrBQwaMdFi5xZU3r9HGY31QzP78xD',
-                                                      from: '9',
-                                                      to: null,
-                                                      value: 91
-                                                  }
-                                              ]
-                                          }
-                                      ]
-                                  }
-                              ]
-                          }
-                      ],
-                      children: [
-                          {
-                              txid: 'cluster2-1',
-                              transactions: [
-                                  {
-                                      txid: 'stxo',
-                                      address: '1EduQkRiMdaLXySDnwNAAy6AoE2MPXf2Yx',
-                                      from: '8',
-                                      to: '21',
-                                      value: 34,
-                                      children: [
-                                          {
-                                              txid: 'c1b9e2a9e6f2a8e9a6e3b5f2b3e7e8e1f4a3e5b1f3a2f2b4e8f9e8f7a4f31111',
-                                              children: [
-                                                  {
-                                                      txid: 'stxo',
-                                                      address: '1EduQkRiMdaLXySDnwNAAy6AoE2MPXf2Yx',
-                                                      from: '21',
-                                                      to: '22',
-                                                      value: 15,
-                                                      children: [
-                                                          {
-                                                              txid: 'd1c1b9e2a9e6f2a8e9a6e3b5f2b3e7e8e1f4a3e5b1f3a2f2b4e8f9e8f7a42345',
-                                                              children: [
-                                                                  {
-                                                                      txid: 'utxo',
-                                                                      address: '1EduQkRiMdaLXySDnwNAAy6AoE2MPXf2Yx',
-                                                                      from: '22',
-                                                                      to: null,
-                                                                      value: 5
-                                                                  }
-                                                              ]
-                                                          }
-                                                      ]
-                                                  },
-                                                  {
-                                                      txid: 'utxo',
-                                                      address: '15okgyzqBc5deTEpR3v3fBM4UU4oTBv2qa',
-                                                      from: '21',
-                                                      to: null,
-                                                      value: 11
-                                                  }
-                                              ]
-                                          }
-                                      ]
-                                  },
-                                  {
-                                      txid: 'stxo',
-                                      address: '15okgyzqBc5deTEpR3v3fBM4UU4oTBv2qa',
-                                      from: '8',
-                                      to: '24',
-                                      value: 1,
-                                      children: [
-                                          {
-                                              txid: 'e1a5e1a7b1e2a9e6f2a8e9a6e3b5f2b3e7e8e1f4a3e5b1f3a2f2b4e8f9e81222',
-                                              children: [
-                                                  {
-                                                      txid: 'stxo',
-                                                      address: '15okgyzqBc5deTEpR3v3fBM4UU4oTBv2qa',
-                                                      from: '24',
-                                                      to: '25',
-                                                      value: 25,
-                                                      children: [
-                                                          {
-                                                              txid: 'f7a4f3e7a2b5a3b5f1e8f6f3a1e9a6f2b4e8f9e8f7a4f3e7a2b5a3b5f11234',
-                                                              children: [
-                                                                  {
-                                                                      txid: 'utxo',
-                                                                      address: '1BgGZ9tcN4rm9KBzDn7KprQz87SZ26SAMH',
-                                                                      from: '25',
-                                                                      to: null,
-                                                                      value: 15
-                                                                  },
-                                                                  {
-                                                                      txid: 'utxo',
-                                                                      address: '16o7YB9S4F5jMBFSycPrbKtJUUPfP7RyBp',
-                                                                      from: '25',
-                                                                      to: null,
-                                                                      value: 0.1
-                                                                  },
-                                                                  {
-                                                                      txid: 'utxo',
-                                                                      address: '3EhWPgqz8D2ZPShJd6UqcpCr3daj3vCo7k',
-                                                                      from: '25',
-                                                                      to: null,
-                                                                      value: 0.002
-                                                                  }
-                                                              ]
-                                                          }
-                                                      ]
-                                                  },
-                                                  {
-                                                      txid: 'stxo',
-                                                      address: '1BgGZ9tcN4rm9KBzDn7KprQz87SZ26SAMH',
-                                                      from: '24',
-                                                      to: '26',
-                                                      value: 22,
-                                                      children: [
-                                                          {
-                                                              txid: '60f7a4f3e7a2b5a3b5f1e8f6f3a1e9a6f2b4e8f9e8f7a4f3e7a2b5a3b5f11111',
-                                                              children: [
-                                                                  {
-                                                                      txid: 'utxo',
-                                                                      address: '12c6DSiU4Rq3P4ZxziKxzrL5LmMBrzjrJX',
-                                                                      from: '26',
-                                                                      to: null,
-                                                                      value: 10
-                                                                  }
-                                                              ]
-                                                          }
-                                                      ]
-                                                  }
-                                              ]
-                                          }
-                                      ]
-                                  }
-                              ]
-                          }
-                      ]
-                  }
-              ]
-          },
-          {
-              txid: 'utxo',
-              address: '3EhWPgqz8D2ZPShJd6UqcpCr3daj3vCo7k',
-              from: '1',
-              to: null,
-              value: 0.009
+      this.width = this.screenWidth - this.margin.left - this.margin.right;
+      this.height = this.screenHeight - this.margin.top - this.margin.bottom;
+
+      this.svg = d3.selectAll('#graphContainer')
+        .append('svg')
+        .attr('width', this.screenWidth)
+        .attr('height', this.screenHeight)
+        .attr("style", "max-width: 100%; height: auto; user-select: none;");
+      
+      this.g = this.svg.append('g')
+        //.attr("transform", "translate(" + (this.width/2) + "," + (this.height/3) + ")");
+      
+      this.zoom = d3.zoom()
+        .scaleExtent([0.2, 1])
+        .on("zoom", (event: any) => {
+          this.g.attr("transform", event.transform);
+        });
+
+      this.svg.call(this.zoom)
+        .call(this.zoom.transform, d3.zoomIdentity.translate(this.width / 3, 0).scale(0.2))
+        .on("dblclick.zoom", null);
+
+      this.svg.on("dblclick", (event: any) => {
+        function elementOutOfViewport(element: any, remove: boolean) {
+          const rect = element.getBoundingClientRect();
+          if (remove) {
+            return (
+              rect.bottom < 0 ||
+              rect.right < 0 ||
+              rect.top > (window.innerHeight || document.documentElement.clientHeight) ||
+              rect.left > (window.innerWidth || document.documentElement.clientWidth)
+            );
+          } else {
+            return (rect.left < 100 || rect.right > (window.innerWidth || document.documentElement.clientWidth) - 100);
           }
-      ]
-    };
-    
-    this.width = this.screenWidth - this.margin.left - this.margin.right;
-    this.height = this.screenHeight - this.margin.top - this.margin.bottom;
-
-    this.svg = d3.selectAll('#graphContainer')
-      .append('svg')
-      .attr('width', this.screenWidth)
-      .attr('height', this.screenHeight)
-      .attr("style", "max-width: 100%; height: auto; user-select: none;");
-    
-    this.g = this.svg.append('g')
-      //.attr("transform", "translate(" + (this.width/2) + "," + (this.height/3) + ")");
-    
-    this.zoom = d3.zoom()
-      .scaleExtent([0.2, 1])
-      .on("zoom", (event: any) => {
-        this.g.attr("transform", event.transform);
-      });
-
-    this.svg.call(this.zoom)
-      .call(this.zoom.transform, d3.zoomIdentity.translate(this.width / 3, 0).scale(0.2))
-      .on("dblclick.zoom", null);
-
-    this.svg.on("dblclick", (event: any) => {
-      function elementOutOfViewport(element: any, remove: boolean) {
-        const rect = element.getBoundingClientRect();
-        if (remove) {
-          return (
-            rect.bottom < 0 ||
-            rect.right < 0 ||
-            rect.top > (window.innerHeight || document.documentElement.clientHeight) ||
-            rect.left > (window.innerWidth || document.documentElement.clientWidth)
-          );
-        } else {
-          return (rect.left < 100 || rect.right > (window.innerWidth || document.documentElement.clientWidth) - 100);
-        }
-      }
-
-      if (!this.expandedCluster) {
-        // Remove tree if not in viewport
-        const originGroup = document.getElementById("origin-group");
-        const destGroup = document.getElementById("dest-group");
-      
-        if (originGroup && elementOutOfViewport(originGroup, true)) {
-          this.gOrigin
-            .transition()
-            .duration(this.duration)
-            .remove();
-        } else if (!originGroup && destGroup && !elementOutOfViewport(destGroup, false)) {
-          this.initializeTree(null, 'origin', false)
         }
 
-        if (destGroup && elementOutOfViewport(destGroup, true)) {
-          this.gDest
-            .transition()
-            .duration(this.duration)
-            .remove();
-        } else if (!destGroup && originGroup && !elementOutOfViewport(originGroup, false)) {
-          this.initializeTree(null, 'dest', false);
-        }
-      }
-
-      function findNearestCluster(root: any, mouseX: number, mouseY: number): any {
-        let closestNode = null;
-        let closestDistance = Number.MAX_VALUE;
-      
-        function visit(node: any) {
-          if (node.data.txid.includes('cluster')) {
-            const [y, x] = [node.x, node.y];
-            // Euclidean distance
-            const distance = Math.sqrt((x - mouseX) ** 2 + (y - mouseY) ** 2);
+        if (!this.expandedCluster) {
+          // Remove tree if not in viewport
+          const originGroup = document.getElementById("origin-group");
+          const destGroup = document.getElementById("dest-group");
         
-            if (distance < closestDistance) {
-              closestDistance = distance;
-              closestNode = node;
+          if (originGroup && elementOutOfViewport(originGroup, true)) {
+            this.gOrigin
+              .transition()
+              .duration(this.duration)
+              .remove();
+          } else if (!originGroup && destGroup && !elementOutOfViewport(destGroup, false)) {
+            this.initializeTree(null, 'origin', false)
+          }
+
+          if (destGroup && elementOutOfViewport(destGroup, true)) {
+            this.gDest
+              .transition()
+              .duration(this.duration)
+              .remove();
+          } else if (!destGroup && originGroup && !elementOutOfViewport(originGroup, false)) {
+            this.initializeTree(null, 'dest', false);
+          }
+        }
+
+        function findNearestCluster(root: any, mouseX: number, mouseY: number): any {
+          let closestNode = null;
+          let closestDistance = Number.MAX_VALUE;
+        
+          function visit(node: any) {
+            if (node.data.txid.includes('group')) {
+              const [y, x] = [node.x, node.y];
+              // Euclidean distance
+              const distance = Math.sqrt((x - mouseX) ** 2 + (y - mouseY) ** 2);
+          
+              if (distance < closestDistance) {
+                closestDistance = distance;
+                closestNode = node;
+              };
+            }
+            if (node.children) {
+              node.children.forEach(visit);
             };
           }
-          if (node.children) {
-            node.children.forEach(visit);
-          };
-        }
-      
-        if (root.children) {
-          root.children.forEach(visit)
-        };
-        return closestNode;
-      }
-
-      let side: string;
-      let oppositeSide: string;
-
-      const currentTransform = d3.zoomTransform(this.svg.node());
-      const [mouseX, mouseY] = currentTransform.invert(d3.pointer(event, this.svg.node()));
-
-      if (!this.expandedCluster) {
-        side = mouseX < 0 ? 'origin' : 'dest';
-
-        const root = `${side}Root` as keyof TreeComponent;
-        const nodes = `${side}Nodes` as keyof TreeComponent;
-
-        // Remove the opposite tree while other tree is focused (purpose: to reduce the number of nodes)
-        oppositeSide = mouseX > 0 ? 'origin' : 'dest';
-        const oppositeGroup = `g${oppositeSide.charAt(0).toUpperCase() + oppositeSide.slice(1)}` as keyof TreeComponent;
-        this[oppositeGroup]
-          .transition()
-          .duration(this.duration)
-          .style("opacity", 0)
-          .remove();
-
-        this.groupClosed = oppositeSide;
-
-        const nearestNode = findNearestCluster(this[root], mouseX, mouseY);
-        this.expandedCluster = parse(stringify(nearestNode));
         
-        if (nearestNode.data.txid.includes('cluster')) {
-          const transactionsInsideCluster = JSON.parse(JSON.stringify(nearestNode.data.transactions));
-          const subsequentClusters = nearestNode.children;
-
-          // calculate the depth of tree
-          const getDepth = (node: any): number => {
-            if (!node.children || node.children.length === 0) {
-                return 1;
-            } else {
-                return 1 + Math.max(...node.children.map(getDepth));
-            }
+          if (root.children) {
+            root.children.forEach(visit)
           };
+          return closestNode;
+        }
 
-          const innerDepth = getDepth({ children: transactionsInsideCluster });
-          let hiddenNodeAdded = false;
+        let side: string;
+        let oppositeSide: string;
 
-          function releaseFromCluster(node: any, depth: number, parent: any) {
-            node.depth = depth;
-            node.parent = parent;
-            node.data = node;
+        const currentTransform = d3.zoomTransform(this.svg.node());
+        const [mouseX, mouseY] = currentTransform.invert(d3.pointer(event, this.svg.node()));
 
-            if (node.children && node.children.length > 0) {
-              node.children.forEach((child:any) => releaseFromCluster(child, depth + 1, node));
-            } else {
-              if (subsequentClusters) {
-                const depth = nearestNode.depth + innerDepth; // - 1
+        if (!this.expandedCluster) {
+          side = mouseX < 0 ? 'origin' : 'dest';
 
-                // Update subsequent nodes
-                let nextParent: any = null;
-                let previousHiddenParent: boolean = true;
-                let previousOriginalDepth = -1;
-                let previousUpdatedCluster: any;
+          const root = `${side}Root` as keyof TreeComponent;
+          const nodes = `${side}Nodes` as keyof TreeComponent;
+
+          // Remove the opposite tree while other tree is focused (purpose: to reduce the number of nodes)
+          oppositeSide = mouseX > 0 ? 'origin' : 'dest';
+          const oppositeGroup = `g${oppositeSide.charAt(0).toUpperCase() + oppositeSide.slice(1)}` as keyof TreeComponent;
+          this[oppositeGroup]
+            .transition()
+            .duration(this.duration)
+            .style("opacity", 0)
+            .remove();
+
+          this.groupClosed = oppositeSide;
+
+          const nearestNode = findNearestCluster(this[root], mouseX, mouseY);
+          this.expandedCluster = parse(stringify(nearestNode));
           
-                const subsequentClustersClone = subsequentClusters.map((cluster:any, index:number) => {
-                  const clonedCluster = { ...cluster }
-                  if (index > 0 && nextParent) {
-                    if (clonedCluster.depth === previousOriginalDepth) {
-                      clonedCluster.parent = previousUpdatedCluster.parent;
-                      clonedCluster.data.hiddenParent = previousHiddenParent;
-                      clonedCluster.depth = previousUpdatedCluster.depth;
+          if (nearestNode.data.txid.includes('group')) {
+            const transactionsInsideCluster = JSON.parse(JSON.stringify(nearestNode.data.transactions));
+            const subsequentClusters = nearestNode.children;
+
+            // calculate the depth of tree
+            const getDepth = (node: any): number => {
+              if (!node.children || node.children.length === 0) {
+                  return 1;
+              } else {
+                  return 1 + Math.max(...node.children.map(getDepth));
+              }
+            };
+
+            const innerDepth = getDepth({ children: transactionsInsideCluster });
+            let hiddenNodeAdded = false;
+
+            function releaseFromCluster(node: any, depth: number, parent: any) {
+              node.depth = depth;
+              node.parent = parent;
+              node.data = node;
+
+              if (node.children && node.children.length > 0) {
+                node.children.forEach((child:any) => releaseFromCluster(child, depth + 1, node));
+              } else {
+                if (subsequentClusters) {
+                  const depth = nearestNode.depth + innerDepth; // - 1
+
+                  // Update subsequent nodes
+                  let nextParent: any = null;
+                  let previousHiddenParent: boolean = true;
+                  let previousOriginalDepth = -1;
+                  let previousUpdatedCluster: any;
+            
+                  const subsequentClustersClone = subsequentClusters.map((group:any, index:number) => {
+                    const clonedCluster = { ...group }
+                    if (index > 0 && nextParent) {
+                      if (clonedCluster.depth === previousOriginalDepth) {
+                        clonedCluster.parent = previousUpdatedCluster.parent;
+                        clonedCluster.data.hiddenParent = previousHiddenParent;
+                        clonedCluster.depth = previousUpdatedCluster.depth;
+                      } else {
+                        previousOriginalDepth = clonedCluster.depth;
+                        clonedCluster.parent = nextParent;
+                        clonedCluster.data.hiddenParent = false;
+                        clonedCluster.depth = depth + index;
+                      };
                     } else {
                       previousOriginalDepth = clonedCluster.depth;
                       clonedCluster.parent = nextParent;
-                      clonedCluster.data.hiddenParent = false;
+                      clonedCluster.data.hiddenParent = previousHiddenParent;
                       clonedCluster.depth = depth + index;
+                    }
+                    previousUpdatedCluster = clonedCluster;
+                    nextParent = clonedCluster;
+                    return clonedCluster;
+                  });
+
+                  const hiddenNodeIndices = subsequentClustersClone.reduce((indices: any, group: any, index: any) => {
+                    if (group.data.hiddenParent === true) {
+                      indices.push(index);
                     };
-                  } else {
-                    previousOriginalDepth = clonedCluster.depth;
-                    clonedCluster.parent = nextParent;
-                    clonedCluster.data.hiddenParent = previousHiddenParent;
-                    clonedCluster.depth = depth + index;
-                  }
-                  previousUpdatedCluster = clonedCluster;
-                  nextParent = clonedCluster;
-                  return clonedCluster;
-                });
+                    return indices;
+                  }, []);
 
-                const hiddenNodeIndices = subsequentClustersClone.reduce((indices: any, cluster: any, index: any) => {
-                  if (cluster.data.hiddenParent === true) {
-                    indices.push(index);
-                  };
-                  return indices;
-                }, []);
-
-                if (node.txid !== 'utxo') {
-                  if (!hiddenNodeAdded) {
-                    const hiddenNodeChildren = {
-                      txid: 'hidden',
-                      depth: depth - 1,
-                      data: {
+                  if (node.txid !== 'utxo') {
+                    if (!hiddenNodeAdded) {
+                      const hiddenNodeChildren = {
                         txid: 'hidden',
+                        depth: depth - 1,
+                        data: {
+                          txid: 'hidden',
+                          children: subsequentClustersClone
+                        },
+                        parent: node,
                         children: subsequentClustersClone
-                      },
-                      parent: node,
-                      children: subsequentClustersClone
-                    };
+                      };
 
-                    for (let i in hiddenNodeIndices) {
-                      subsequentClustersClone[i].parent = hiddenNodeChildren;
-                    };
+                      for (let i in hiddenNodeIndices) {
+                        subsequentClustersClone[i].parent = hiddenNodeChildren;
+                      };
 
-                    node.children = [hiddenNodeChildren];
-                    hiddenNodeAdded = true;
+                      node.children = [hiddenNodeChildren];
+                      hiddenNodeAdded = true;
 
-                  } else {
-                    const hiddenNodeNoChildren = {
-                      txid: 'hidden',
-                      depth: depth - 1,
-                      data: {
+                    } else {
+                      const hiddenNodeNoChildren = {
                         txid: 'hidden',
-                      },
-                      parent: node
-                    };
-                    
-                    node.children = [hiddenNodeNoChildren];
+                        depth: depth - 1,
+                        data: {
+                          txid: 'hidden',
+                        },
+                        parent: node
+                      };
+                      
+                      node.children = [hiddenNodeNoChildren];
+                    }
                   }
                 }
               }
+              return node;
             }
-            return node;
-          }
 
-          this.newChildren = transactionsInsideCluster.map((transaction: any) => {
-            return releaseFromCluster(transaction, nearestNode.depth, nearestNode.parent);
-          });
+            this.newChildren = transactionsInsideCluster.map((transaction: any) => {
+              return releaseFromCluster(transaction, nearestNode.depth, nearestNode.parent);
+            });
 
-          const nearestNodeParent = nearestNode.parent;
-          const nearestNodeIndex = nearestNode.parent.children.indexOf(nearestNode);
-          let visited = false;
-          
-          this[nodes].forEach((d: any) => {
-            if (d.data.txid.includes('txo') && !visited) {
-              if (d.data.from === nearestNodeParent.data.from && d.data.to === nearestNodeParent.data.to) {
+            const nearestNodeParent = nearestNode.parent;
+            const nearestNodeIndex = nearestNode.parent.children.indexOf(nearestNode);
+            let visited = false;
+            
+            this[nodes].forEach((d: any) => {
+              if (d.data.txid.includes('txo') && !visited) {
+                if (d.data.from === nearestNodeParent.data.from && d.data.to === nearestNodeParent.data.to) {
+                  d.children.splice(nearestNodeIndex, 1, ...this.newChildren);
+                  d.data.children.splice(nearestNodeIndex, 1, ...this.newChildren);
+                  visited = true;
+                }
+              } else if (d.data.txid === nearestNodeParent.data.txid && !visited) {
                 d.children.splice(nearestNodeIndex, 1, ...this.newChildren);
                 d.data.children.splice(nearestNodeIndex, 1, ...this.newChildren);
                 visited = true;
+              };
+            });
+
+            this.updateTree(nearestNode, side);
+          }
+        } else if (this.expandedCluster) {
+          side = this.expandedCluster.y < 0 ? 'origin' : 'dest';
+          oppositeSide = this.expandedCluster.y > 0 ? 'origin' : 'dest';
+          const nodes = `${side}Nodes` as keyof TreeComponent;
+
+          const originalParent = this.expandedCluster.parent;
+          const indexOfCluster = originalParent.children.indexOf(this.expandedCluster);
+          let visited = false;
+
+          this[nodes].forEach((d: any) => {
+            if (d.data.txid.includes('txo') && !visited) {
+              if (d.data.from === originalParent.data.from && d.data.to === originalParent.data.to) {
+                d.children.splice(indexOfCluster, this.newChildren.length, this.expandedCluster);
+                visited = true;
               }
-            } else if (d.data.txid === nearestNodeParent.data.txid && !visited) {
-              d.children.splice(nearestNodeIndex, 1, ...this.newChildren);
-              d.data.children.splice(nearestNodeIndex, 1, ...this.newChildren);
+            } else if (d.data.txid === originalParent.data.txid && !visited) {
+              d.children.splice(indexOfCluster, this.newChildren.length, this.expandedCluster);
               visited = true;
             };
           });
 
-          this.updateTree(nearestNode, side);
+          this.groupClosed = '';
+          
+          const returnNode = this.expandedCluster;
+          this.expandedCluster = undefined;
+
+          this.initializeTree(null, oppositeSide, false);
+
+          this.updateTree(returnNode, side);
         }
-      } else if (this.expandedCluster) {
-        side = this.expandedCluster.y < 0 ? 'origin' : 'dest';
-        oppositeSide = this.expandedCluster.y > 0 ? 'origin' : 'dest';
-        const nodes = `${side}Nodes` as keyof TreeComponent;
+      });
 
-        const originalParent = this.expandedCluster.parent;
-        const indexOfCluster = originalParent.children.indexOf(this.expandedCluster);
-        let visited = false;
+      this.route.queryParams.subscribe(queryParams => {
+        if (type === 'path') {
+          const txid1 = queryParams['tx1'];
+          const txid2 = queryParams['tx2']
 
-        this[nodes].forEach((d: any) => {
-          if (d.data.txid.includes('txo') && !visited) {
-            if (d.data.from === originalParent.data.from && d.data.to === originalParent.data.to) {
-              d.children.splice(indexOfCluster, this.newChildren.length, this.expandedCluster);
-              visited = true;
-            }
-          } else if (d.data.txid === originalParent.data.txid && !visited) {
-            d.children.splice(indexOfCluster, this.newChildren.length, this.expandedCluster);
-            visited = true;
-          };
-        });
+          this.dataRetrievalService.requestPath(txid1, txid2).subscribe((jsonData: JSON) => {
+            this.initializeTree(jsonData, 'path', true);
+          })
+        } else if (type === 'origindest'){
+          const selected_txid = queryParams['tx'];
 
-        this.groupClosed = '';
-        
-        const returnNode = this.expandedCluster;
-        this.expandedCluster = undefined;
+          this.dataRetrievalService.requestOrigin(selected_txid).subscribe((jsonData: JSON) => {
+            this.initializeTree(jsonData, 'origin', true);
+          });
 
-        this.initializeTree(null, oppositeSide, false);
+          this.dataRetrievalService.requestDestination(selected_txid).subscribe((jsonData: JSON) => {
+            this.initializeTree(jsonData, 'dest', true);
+          })
 
-        this.updateTree(returnNode, side);
-      }
+        };
+      })
     });
-    
-    this.initializeTree(originData, 'origin', true);
-    this.initializeTree(destData, 'dest', true);
   }     
 
   initializeTree(data: any, side: string, firstTime: boolean) {
@@ -759,7 +432,7 @@ export class GraphTest2Component implements OnInit {
     this[root].y0 = 0;
 
     // Expand all nodes
-    this[root].descendants().forEach((d:any) => {
+    this[root].descendants().forEach((d: any) => {
       if (d._children) {
         d.children = d._children;
         d._children = null;
@@ -781,9 +454,9 @@ export class GraphTest2Component implements OnInit {
     // Handling multiple parent issue
     const nodePairs: { source: any, target: any, initial: boolean }[] = []
     const nodeUniqueMap = new Map()
-
-    const transactionHierarchy = this[root].descendants().filter((d: any) => d.parent && !['cluster', 'txo', 'hidden'].some(keyword => d.data.txid.includes(keyword)));
-
+    
+    const transactionHierarchy = this[root].descendants().filter((d: any) => d.parent && !['group', 'txo', 'hidden'].some(keyword => d.data.txid.includes(keyword)));
+   
     transactionHierarchy.forEach((d: any) => {
       const id = d.data.txid;
       if (!nodeUniqueMap.has(id)) {
@@ -893,7 +566,12 @@ export class GraphTest2Component implements OnInit {
       .attr("transform", function() {
         return "translate(" + source.y + "," + source.x + ")";
       })
-      .on('click', (event: any, d: any) => console.log(d));
+      .on('click', (event: any, d: any) => {
+        if (!['group', 'txo', 'hidden'].some(keyword => d.data.txid.includes(keyword))) {
+          this.transactionDetail = { txid: d.data.txid, fee: "0.00166757", in_degree: 2, out_degree: 2, total_degree: 4, nu_out_degree: 0 }
+          console.log(this.transactionDetail)
+        };
+      });
 
     const nodeUpdate = nodeEnter.merge(node)
 
@@ -927,16 +605,32 @@ export class GraphTest2Component implements OnInit {
       .style("fill", "white")
       .attr("dy", ".35em")
       .attr("text-anchor", "middle")
+      .style("text-shadow", function(d: any) {
+        const fill = d.data.txid === 'utxo' ? 'green' : 'red';
+        return `8px 8px 16px ${fill}`;
+      })
       .text(function(d: any) {
         return d.data.value;
       });
+
+    txoNodesUpdate
+      .append("text")
+      .attr('class', 'txoAddress')
+      .style("fill", "white")
+      .style("font-size", "13px")
+      .attr("dy", "5em")
+      .style("text-shadow", "8px 8px 16px var(--theme-bg-color)")
+      .attr("text-anchor", "middle")
+      .text(function(d: any) {
+        return d.data.address;
+      });
   
-    const clusterNodesUpdate = nodeUpdate.filter((d: any) => d.data.txid.includes('cluster'));
-    clusterNodesUpdate.selectAll('*').remove();
-    clusterNodesUpdate
+    const groupNodesUpdate = nodeUpdate.filter((d: any) => d.data.txid.includes('group'));
+    groupNodesUpdate.selectAll('*').remove();
+    groupNodesUpdate
       .append("rect")
       .attr("class", (d: any) => {
-        return d.data.searched ? "highlighted-node clusterRect" : "clusterRect";
+        return d.data.searched ? "highlighted-node groupRect" : "groupRect";
       })
       .style("fill", "var(--theme-bg-color)")
       .attr("stroke-width", 1)
@@ -947,7 +641,7 @@ export class GraphTest2Component implements OnInit {
       .attr("width", 150)
       .attr("height", 100)
 
-    const transactionNodesUpdate = nodeUpdate.filter((d: any) => !d.data.txid.includes('txo') && !d.data.txid.includes('cluster'));
+    const transactionNodesUpdate = nodeUpdate.filter((d: any) => !d.data.txid.includes('txo') && !d.data.txid.includes('group'));
     transactionNodesUpdate.selectAll('*').remove();
     transactionNodesUpdate
       .append("rect")
@@ -979,36 +673,19 @@ export class GraphTest2Component implements OnInit {
       .style("height", "100%")
       .style("box-sizing", "border-box")
       .style("padding", "10px")
+      .style("overflow", "auto")
       .append("p")
       .html(function(d: any) {
-        return `txid: ${d.data.txid} <br> featureA <br> featureB <br> featureC <br> featureD`;
+        return `
+          <strong>txid:</strong> ${d.data.txid} <br>
+          <strong>fee:</strong> 0.00166757 <br>
+          <strong>in_degree:</strong> 2 <br>
+          <strong>out_degree:</strong> 2 <br>
+          <strong>total_degree:</strong> 4 <br>
+          <strong>nu_out_degree:</strong> 0`;
       })
       .style("color", function(d: any) {
         return d.parent ? "white" : "black";
-      });
-    
-    transactionNodesUpdate
-      .append("foreignObject")
-      .attr("class", "transactionFullScreenIcon")
-      .attr("width", 150)
-      .attr("height", 200)
-      .attr("x", -75)
-      .attr('y', -100)
-      .append("xhtml:div")
-      .style("width", "100%")
-      .style("height", "100%")
-      .style("position", "relative")
-      .append("div")
-      .style("position", "absolute")
-      .style("top", "10px") 
-      .style("right", "10px")
-      .append("i")
-      .attr("class", "fa-solid fa-up-right-and-down-left-from-center")
-      .on('click', function(d: any) {
-        const transactionDetail = document.getElementById("transaction-detail");
-        if (transactionDetail) {
-          transactionDetail.classList.add("show");
-        };
       });
 
     const nodeExit = node
@@ -1045,7 +722,7 @@ export class GraphTest2Component implements OnInit {
       })
       .attr('stroke-width', 1)
       .style('stroke', ((d: any) => {
-        return !d.data.txid.includes('cluster') || d.data.txid === 'hidden' ? 'var(--bitcoin-theme)' : 'white';
+        return !d.data.txid.includes('group') || d.data.txid === 'hidden' ? 'var(--bitcoin-theme)' : 'white';
       }))
       .attr('fill', 'none');
 
@@ -1258,7 +935,7 @@ export class GraphTest2Component implements OnInit {
     // Set every searched field to false
     const removeSearched = (nodes: any): void => {
       nodes.forEach((d: any) => {
-        if (d.data.txid.includes('cluster')) {
+        if (d.data.txid.includes('group')) {
           searchHierarchy(d.data.transactions, false, false, 0);
         };
         d.data.searched = false;
@@ -1288,7 +965,7 @@ export class GraphTest2Component implements OnInit {
     };
 
     const transactionIdRegex = /^[0-9a-fA-F]{64}$/;
-    const walletAddressRegex = /^(1|3|[13])[a-km-zA-HJ-NP-Z1-9]{25,34}$/;
+    const walletAddressRegex = /^(1|3|bc)[a-km-zA-HJ-NP-Z1-9]{25,42}$/;
 
     let searchType = '';
 
@@ -1307,7 +984,7 @@ export class GraphTest2Component implements OnInit {
 
     const searchNodes = (nodes: any) => {
       nodes.forEach((d: any) => {
-        if (d.data.txid.includes('cluster')) {
+        if (d.data.txid.includes('group')) {
           const [foundInCluster, newCount] = searchHierarchy(d.data.transactions, false, true, 0);
           d.data.searched = foundInCluster;
           count += newCount;
@@ -1362,11 +1039,12 @@ export class GraphTest2Component implements OnInit {
         this.searchSuccessMessage = `Found ${searchType}`;
       };
 
-    this.updateTree(this.destRoot, 'dest')
+    this.updateTree(this.destRoot, 'dest');
     this.updateTree(this.originRoot, 'origin');
     };
   }
 
+  /* This part is only for demo */
   getPath(target: string, side: string) {
     const nodes = `${side}Nodes` as keyof TreeComponent;
     const targetNode = this[nodes].find((node: any) => node.data.txid === target);
@@ -1387,22 +1065,11 @@ export class GraphTest2Component implements OnInit {
     
     const pathData = convertToHierarchy(path);
 
-    this.gOrigin
-            .transition()
-            .duration(this.duration)
-            .remove();
-    
-    this.gDest
-      .transition()
-      .duration(this.duration)
-      .remove();
+    const url = this.router.serializeUrl(
+      this.router.createUrlTree(['/dev2/path'])
+    );
 
-    this.initializeTree(pathData, 'path', true);
-  }
-
-  removePath() {
-    this.initializeTree(null, 'origin', false);
-    this.initializeTree(null, 'dest', false);
+    window.open(url, '_blank');
   }
 
   private getAncestors(node: any) {

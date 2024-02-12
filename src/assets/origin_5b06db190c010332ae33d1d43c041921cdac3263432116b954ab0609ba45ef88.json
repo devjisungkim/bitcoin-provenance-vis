@@ -1,0 +1,56 @@
+{
+  "txid": "5b06db190c010332ae33d1d43c041921cdac3263432116b954ab0609ba45ef88",
+  "children": [
+    {
+      "txid": "stxo",
+      "from": "a1f53251fc4aaf0cc1611a6542a9ba0b0693ddae9c5ba70e9b08c69d83b86a3a",
+      "to": "5b06db190c010332ae33d1d43c041921cdac3263432116b954ab0609ba45ef88",
+      "value": null,
+      "children": [
+        {
+          "txid": "group",
+          "transactions": [
+            {
+              "txid": "a1f53251fc4aaf0cc1611a6542a9ba0b0693ddae9c5ba70e9b08c69d83b86a3a",
+              "children": [
+                {
+                  "txid": "stxo",
+                  "from": "22a113959a477800fbd33d44f4676f094d8513afdd0ac9cf488d998769add30c",
+                  "to": "a1f53251fc4aaf0cc1611a6542a9ba0b0693ddae9c5ba70e9b08c69d83b86a3a",
+                  "value": 0.007691182790659074,
+                  "children": [
+                    {
+                      "txid": "22a113959a477800fbd33d44f4676f094d8513afdd0ac9cf488d998769add30c",
+                      "children": [
+                        {
+                          "txid": "stxo",
+                          "from": "d922fe0c09f95d5d2200869381ecb1f91540d9cadc4e7a6d157f213d3ab7c200",
+                          "to": "22a113959a477800fbd33d44f4676f094d8513afdd0ac9cf488d998769add30c",
+                          "value": 0.0045,
+                          "children": [
+                            {
+                              "txid": "d922fe0c09f95d5d2200869381ecb1f91540d9cadc4e7a6d157f213d3ab7c200",
+                              "children": [
+                                {
+                                  "txid": "stxo",
+                                  "from": "",
+                                  "to": "d922fe0c09f95d5d2200869381ecb1f91540d9cadc4e7a6d157f213d3ab7c200",
+                                  "value": null
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "children": null
+        }
+      ]
+    }
+  ]
+}

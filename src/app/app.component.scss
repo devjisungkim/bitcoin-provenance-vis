@@ -1,5 +1,8 @@
 #navbar {
+    position: sticky;
+    top: 0;
     background-color: var(--theme-bg-color);
+    z-index: 1000;
     box-shadow: none;
     #page-nav {
         li {

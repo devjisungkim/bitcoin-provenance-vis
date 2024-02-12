@@ -4,7 +4,7 @@ import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { HttpClientModule } from '@angular/common/http';
-import { FormsModule } from '@angular/forms';
+import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 
 import { GraphComponent } from './graph/graph.component';
 import { HomeComponent } from './home/home.component';
@@ -39,6 +39,7 @@ import { MdbValidationModule } from 'mdb-angular-ui-kit/validation';
 import { GraphTestComponent } from './graph-test/graph-test.component';
 import { GraphTest2Component } from './graph-test2/graph-test2.component';
 import { GraphTest3Component } from './graph-test3/graph-test3.component';
+import { ErrorComponent } from './error/error.component';
 
 @NgModule({
   declarations: [
@@ -50,6 +51,7 @@ import { GraphTest3Component } from './graph-test3/graph-test3.component';
     GraphTestComponent,
     GraphTest2Component,
     GraphTest3Component,
+    ErrorComponent,
   ],
   imports: [
     BrowserModule,
@@ -80,7 +82,8 @@ import { GraphTest3Component } from './graph-test3/graph-test3.component';
     MdbTabsModule,
     MdbTooltipModule,
     MdbValidationModule,
-    MatProgressSpinnerModule
+    MatProgressSpinnerModule,
+    ReactiveFormsModule
   ],
   providers: [],
   bootstrap: [AppComponent]

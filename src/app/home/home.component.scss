@@ -1,23 +1,55 @@
-#home{
-    position: relative;
-    padding-top: 10%;
-    max-width: 50%;
-    #web-name {
-        color: var(--bitcoin-theme);
-        font-weight: 1000;
-    }
-    mdb-form-control {
-        width: 100%;
-    }
-    input {
-        background-color: #fff;
-    }
+.container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
 }
 
-img {
-    position: absolute;
-    top: 20%;
-    right: 10%;
-    width: 30%;
-    height: auto;
+.home {
+    max-width: 600px;
+    width: 100%;
+    text-align: center;
 }
+
+.title {
+    color: var(--bitcoin-theme);
+    font-weight: 1000;
+}
+  
+.search-container,
+.path-container {
+  margin-top: 100px;
+  margin-bottom: 50px;
+}
+
+h5 {
+    margin-bottom: 10px;
+}
+
+form {
+    width: 100%;
+}
+
+.form-group {
+    display: flex;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+label {
+    margin-right: 10px;
+}
+
+.arrow {
+    margin: 0 10px;
+}
+
+input {
+    flex: 1;
+}
+
+.btn-custom {
+    background-color: var(--bitcoin-theme);
+    color: black;
+  }
+  

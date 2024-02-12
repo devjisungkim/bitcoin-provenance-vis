@@ -37,7 +37,7 @@
     <div class="legend-text">Spent Transaction Output</div>
   </div>
   <div class="legend-item">
-    <div class="cluster-node"></div>
+    <div class="group-node"></div>
     <div class="legend-text">Group</div>
   </div>
   <div class="legend-item">
@@ -48,9 +48,11 @@
 
 <div id="graphContainer"></div>
 
-<div id="transaction-detail" class="transaction-detail">
-    <div class="transaction-detail-content">
-      <p>More transaction info</p>
-      <button (click)="closeTransactionDetailPopover()" id="closeTransactionDetail">Close</button>
-    </div>
+<div class="transaction-detail">
+  <div class="detail-items" *ngFor="let item of transactionDetail | keyvalue">
+    <p><strong>{{ item.key }}:</strong> {{ item.value }}</p>
+  </div>
+  <div class="no-transaction-selected" *ngIf="!transactionDetail">
+    No Transaction Selected
+  </div>
 </div>
