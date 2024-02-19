@@ -3,7 +3,6 @@ import { ActivatedRoute, Router } from '@angular/router';
 import * as d3 from 'd3';
 import { parse, stringify } from 'flatted';
 import { DataRetrievalService } from 'src/services/data-retrieval/data-retrieval.service';
-import { SharedDataService } from 'src/services/shared-data/shared-data.service';
 
 type TreeComponent = {
   destTree: any;
@@ -89,7 +88,6 @@ export class GraphTest2Component implements OnInit {
   constructor( 
     private router: Router,
     private route: ActivatedRoute,
-    private sharedDataService: SharedDataService,
     private dataRetrievalService: DataRetrievalService
   ) {  }
 
@@ -376,20 +374,17 @@ export class GraphTest2Component implements OnInit {
           const txid1 = queryParams['tx1'];
           const txid2 = queryParams['tx2']
 
-          this.dataRetrievalService.requestPath(txid1, txid2).subscribe((jsonData: JSON) => {
-            this.initializeTree(jsonData, 'path', true);
+          this.dataRetrievalService.requestPath(txid1, txid2).subscribe((res: any) => {
+            this.initializeTree(res['pathData'], 'path', true);
           })
+
         } else if (type === 'origindest'){
           const selected_txid = queryParams['tx'];
 
-          this.dataRetrievalService.requestOrigin(selected_txid).subscribe((jsonData: JSON) => {
-            this.initializeTree(jsonData, 'origin', true);
+          this.dataRetrievalService.requestOriginDest(selected_txid).subscribe((res: any) => {  
+            this.initializeTree(res['originData'], 'origin', true);
+            this.initializeTree(res['destData'], 'dest', true);
           });
-
-          this.dataRetrievalService.requestDestination(selected_txid).subscribe((jsonData: JSON) => {
-            this.initializeTree(jsonData, 'dest', true);
-          })
-
         };
       })
     });
@@ -501,13 +496,13 @@ export class GraphTest2Component implements OnInit {
 
           if (parentNode.children.length === 0) {
             parentNode.children = null;
-          }
+          };
         };
       };
     })
     this[duplicateTxPairs] = nodePairs;
     // End of handling multiple parent issue
-    
+
     this[tree](this[root]);
 
     this[links] = this[root].descendants().slice(1);
@@ -673,7 +668,6 @@ export class GraphTest2Component implements OnInit {
       .style("height", "100%")
       .style("box-sizing", "border-box")
       .style("padding", "10px")
-      .style("overflow", "auto")
       .append("p")
       .html(function(d: any) {
         return `

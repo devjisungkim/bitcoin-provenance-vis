@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
 
 @Injectable({
@@ -7,25 +7,24 @@ import { Observable } from 'rxjs';
 })
 export class DataRetrievalService {
 
-  url: string = '/assets/';
+  url: string = 'https://7daa-220-245-42-224.ngrok-free.app/api/';
 
   constructor(
     private http: HttpClient,
     ) {  }
+
+  requestOriginDest(txid: string): Observable<any> {
+    const headers = new HttpHeaders({
+      'ngrok-skip-browser-warning': 'any_value'
+    });
     
-  requestDestination(txid: string): Observable<JSON> {
-    const jsonURL = this.url + 'dest_' + txid + '.json';
-    return this.http.get<JSON>(jsonURL);
+    const jsonURL = `${this.url}getOriginDest/${txid}`;
+    return this.http.get(jsonURL, {headers: headers, params: {txid: txid}})
   }
 
-  requestOrigin(txid: string): Observable<JSON> {
-    const jsonURL = this.url + 'origin_' + txid + '.json';
-    return this.http.get<JSON>(jsonURL);
-  }
-
-  requestPath(txid1:string, txid2: string): Observable<JSON> {
-    const jsonURL = this.url + 'path_' + txid1 + txid2 + '.json';
-    return this.http.get<JSON>(jsonURL);
+  requestPath(txid1:string, txid2: string): Observable<any>  {
+    const jsonURL = `${this.url}getPath/${txid1}&${txid2}`;
+    return this.http.get(jsonURL);
   }
 
   /*

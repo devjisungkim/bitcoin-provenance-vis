@@ -39,7 +39,7 @@ export class HomeComponent implements OnInit {
 
   navigateToGraph() {
     const url = this.router.serializeUrl(
-      this.router.createUrlTree(['/graph'])
+      this.router.createUrlTree(['/dev2'])
     );
     window.open(url, '_blank');
   }
