@@ -7,7 +7,7 @@ import { Observable } from 'rxjs';
 })
 export class DataRetrievalService {
 
-  url: string = 'https://7daa-220-245-42-224.ngrok-free.app/api/';
+  url: string = 'https://3926-130-102-13-164.ngrok-free.app/api/';
 
   constructor(
     private http: HttpClient,
@@ -15,7 +15,7 @@ export class DataRetrievalService {
 
   requestOriginDest(txid: string): Observable<any> {
     const headers = new HttpHeaders({
-      'ngrok-skip-browser-warning': 'any_value'
+      'ngrok-skip-browser-warning': 'skip'
     });
     
     const jsonURL = `${this.url}getOriginDest/${txid}`;

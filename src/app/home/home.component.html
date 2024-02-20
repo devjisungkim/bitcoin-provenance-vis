@@ -1,31 +1,61 @@
 <div class="container">
   <div class="home">
     <h1 class="mb-5">Welcome to <span class="title">BitcoinTrace</span></h1>
+  </div>
 
-    <div class="search-container">
+  <div class="sub-container">
+
+    <div class="origindest-container">
       <h4 class="mb-3">Track the Origins and Destinations of a Bitcoin Transaction</h4>
       
-      <form [formGroup]="searchForm" class="form-inline">
+      <form [formGroup]="originDestForm" class="form-inline" (submit)="navigateToOriginDest()">
         <div class="form-group mb-2 mr-sm-2">
-          <input type="text" class="form-control" id="searchTransaction" placeholder="Search Transaction" formControlName="searchTransaction">
+          <input type="text" class="form-control" id="searchTransaction" placeholder="Search Transaction" formControlName="tx">
         </div>
-        <button type="button" class="btn btn-custom mb-2" (click)="visualizeTransaction()">Track</button>
+
+        <!-- Error messages for the "Search Transaction" input -->
+        <div *ngIf="originDestForm.get('tx')?.hasError('required')" id="error-message">
+          Transaction ID is required.
+        </div>
+        <div *ngIf="originDestForm.get('tx')?.hasError('pattern')" id="error-message">
+          Transaction ID must be a 64-character hexadecimal string.
+        </div>
+
+        <button type="submit" class="btn btn-custom mb-2" [disabled]="!originDestForm.valid">Track</button>
       </form>
     </div>
 
     <div class="path-container">
       <h4 class="mb-3">View the Path Between Two Transactions</h4>
       
-      <form [formGroup]="pathForm" class="form-inline">
+      <form [formGroup]="pathForm" class="form-inline" (submit)="navigateToPath()">
         <div class="form-group mb-2 mr-sm-2">
-          <input type="text" class="form-control" id="search-from" placeholder="Transaction 1" formControlName="path-from">
+          <input type="text" class="form-control" id="search-from" placeholder="Transaction 1" formControlName="tx1">
         </div>
+          <!-- Error message for Transaction 1 -->
+        <div *ngIf="pathForm.get('tx1')?.hasError('required')" id="error-message">
+          Transaction 1 is required.
+        </div>
+        <div *ngIf="pathForm.get('tx1')?.hasError('pattern')" id="error-message">
+          Transaction 1 must be a 64-character hexadecimal string.
+        </div>
+
         <i class="fas fa-arrows-alt-h fa-lg fa-rotate-90"></i>
+
         <div class="form-group mb-2 mr-sm-2">
-          <input type="text" class="form-control" id="search-to" placeholder="Transaction 2" formControlName="path-to">
+          <input type="text" class="form-control" id="search-to" placeholder="Transaction 2" formControlName="tx2">
         </div>
-        <button type="button" class="btn btn-custom mb-2" (click)="visualizePath()">View Path</button>
+        <!-- Error message for Transaction 2 -->
+        <div *ngIf="pathForm.get('tx2')?.hasError('required')" id="error-message">
+          Transaction 2 is required.
+        </div>
+        <div *ngIf="pathForm.get('tx2')?.hasError('pattern')" id="error-message">
+          Transaction 2 must be a 64-character hexadecimal string.
+        </div>
+        <button type="submit" class="btn btn-custom mb-2" [disabled]="!pathForm.valid">View Path</button>
       </form>
     </div>
+    
   </div>
+
 </div>

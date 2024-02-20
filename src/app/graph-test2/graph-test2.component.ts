@@ -84,6 +84,7 @@ export class GraphTest2Component implements OnInit {
   searchSuccessMessage: string = '';
   searchResult: any[] = [];
   transactionDetail: any;
+  graphLoading: boolean = false;
 
   constructor( 
     private router: Router,
@@ -96,6 +97,8 @@ export class GraphTest2Component implements OnInit {
     this.screenHeight = window.innerHeight; 
 
     this.route.params.subscribe(params => {
+      this.graphLoading = true;
+
       const type = params['type'];
 
       this.width = this.screenWidth - this.margin.left - this.margin.right;
@@ -374,23 +377,24 @@ export class GraphTest2Component implements OnInit {
           const txid1 = queryParams['tx1'];
           const txid2 = queryParams['tx2']
 
-          this.dataRetrievalService.requestPath(txid1, txid2).subscribe((res: any) => {
-            this.initializeTree(res['pathData'], 'path', true);
+          this.dataRetrievalService.requestPath(txid1, txid2).subscribe((data: any) => {
+            this.initializeTree(data['pathData'], 'path', true);
           })
 
         } else if (type === 'origindest'){
           const selected_txid = queryParams['tx'];
 
-          this.dataRetrievalService.requestOriginDest(selected_txid).subscribe((res: any) => {  
-            this.initializeTree(res['originData'], 'origin', true);
-            this.initializeTree(res['destData'], 'dest', true);
+          this.dataRetrievalService.requestOriginDest(selected_txid).subscribe(async (data: any) => { 
+            await this.initializeTree(data['originData'], 'origin', true);
+            await this.initializeTree(data['destData'], 'dest', true);
+            this.graphLoading = false;
           });
         };
       })
     });
   }     
 
-  initializeTree(data: any, side: string, firstTime: boolean) {
+  async initializeTree(data: any, side: string, firstTime: boolean) {
     const tree = `${side}Tree` as keyof TreeComponent;
     const root = `${side}Root` as keyof TreeComponent;
     const g = `g${side.charAt(0).toUpperCase() + side.slice(1)}` as keyof TreeComponent;
