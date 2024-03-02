@@ -108,13 +108,14 @@ export class GraphTest2Component implements OnInit {
         .append('svg')
         .attr('width', this.screenWidth)
         .attr('height', this.screenHeight)
+        .attr('viewBox', `-${this.screenWidth/4} -${this.screenHeight/2} ${this.screenWidth} ${this.screenHeight}`)
         .attr("style", "max-width: 100%; height: auto; user-select: none;");
       
       this.g = this.svg.append('g')
-        //.attr("transform", "translate(" + (this.width/2) + "," + (this.height/3) + ")");
+        //.attr("transform", "translate(" + this.width + "," + this.height + ")");
       
       this.zoom = d3.zoom()
-        .scaleExtent([0.2, 1])
+        .scaleExtent([0.001, 2])
         .on("zoom", (event: any) => {
           this.g.attr("transform", event.transform);
         });
@@ -247,7 +248,7 @@ export class GraphTest2Component implements OnInit {
                   let previousOriginalDepth = -1;
                   let previousUpdatedCluster: any;
             
-                  const subsequentClustersClone = subsequentClusters.map((group:any, index:number) => {
+                  const subsequentClustersClone = subsequentClusters.map((group: any, index: number) => {
                     const clonedCluster = { ...group }
                     if (index > 0 && nextParent) {
                       if (clonedCluster.depth === previousOriginalDepth) {
@@ -329,11 +330,21 @@ export class GraphTest2Component implements OnInit {
                 if (d.data.from === nearestNodeParent.data.from && d.data.to === nearestNodeParent.data.to) {
                   d.children.splice(nearestNodeIndex, 1, ...this.newChildren);
                   d.data.children.splice(nearestNodeIndex, 1, ...this.newChildren);
+
+                  this.newChildren.forEach((newChild: any) => {
+                    newChild.parent = d;
+                  });
+
                   visited = true;
                 }
               } else if (d.data.txid === nearestNodeParent.data.txid && !visited) {
                 d.children.splice(nearestNodeIndex, 1, ...this.newChildren);
                 d.data.children.splice(nearestNodeIndex, 1, ...this.newChildren);
+
+                this.newChildren.forEach((newChild: any) => {
+                  newChild.parent = d;
+                });
+                
                 visited = true;
               };
             });
@@ -352,10 +363,12 @@ export class GraphTest2Component implements OnInit {
           this[nodes].forEach((d: any) => {
             if (d.data.txid.includes('txo') && !visited) {
               if (d.data.from === originalParent.data.from && d.data.to === originalParent.data.to) {
+                this.expandedCluster.parent = d;
                 d.children.splice(indexOfCluster, this.newChildren.length, this.expandedCluster);
                 visited = true;
               }
             } else if (d.data.txid === originalParent.data.txid && !visited) {
+              this.expandedCluster.parent = d;
               d.children.splice(indexOfCluster, this.newChildren.length, this.expandedCluster);
               visited = true;
             };
@@ -441,7 +454,7 @@ export class GraphTest2Component implements OnInit {
     this.updateTree(this[root], side)
   }
 
-  updateTree(source: any, side: string) {
+  async updateTree(source: any, side: string) {
     const tree = `${side}Tree` as keyof TreeComponent;
     const root = `${side}Root` as keyof TreeComponent;
     const links = `${side}Links` as keyof TreeComponent;
@@ -507,10 +520,10 @@ export class GraphTest2Component implements OnInit {
     this[duplicateTxPairs] = nodePairs;
     // End of handling multiple parent issue
 
-    this[tree](this[root]);
-
     this[links] = this[root].descendants().slice(1);
     this[nodes] = this[root].descendants();
+
+    this[tree](this[root]);
 
     let averageX = 0;
     let maxHiddenY = 0;
@@ -545,10 +558,10 @@ export class GraphTest2Component implements OnInit {
     const height = right.x - left.x + this.margin.top + this.margin.bottom;
 
     let i = 0;
+
     const transition = this.svg.transition()
       .duration(this.duration)
-      .attr("viewBox", [-this.margin.left, left.x - this.margin.top, this.width, height])
-      .tween("resize", window.ResizeObserver ? null : () => () => this.svg.dispatch("toggle"));
+      //.attr("viewBox", [-this.margin.left, left.x - this.margin.top, this.width, height])
 
     const node = this[gNode].selectAll("g.node").data(this[nodes], (d: any) => d.id || (d.id = ++i));
 
@@ -566,9 +579,9 @@ export class GraphTest2Component implements OnInit {
         return "translate(" + source.y + "," + source.x + ")";
       })
       .on('click', (event: any, d: any) => {
+        console.log(d)
         if (!['group', 'txo', 'hidden'].some(keyword => d.data.txid.includes(keyword))) {
-          this.transactionDetail = { txid: d.data.txid, fee: "0.00166757", in_degree: 2, out_degree: 2, total_degree: 4, nu_out_degree: 0 }
-          console.log(this.transactionDetail)
+          this.transactionDetail = { txid: d.data.txid, fee: "0.00166757", in_degree: 2, out_degree: 2, total_degree: 4, num_out_degree: 0 }
         };
       });
 
@@ -704,11 +717,12 @@ export class GraphTest2Component implements OnInit {
       .attr('class', 'link')
       .attr("d", () => {
         const o = { 
-          x: source.x, 
-          y: source.y 
+          x: source.x0, 
+          y: source.y0 
         };
         return this.diagonal(o, o);
-      });
+      })
+      .on("click", (event: any, d: any) => console.log(d))
 
     const linkUpdate = linkEnter.merge(link);
 
@@ -728,14 +742,14 @@ export class GraphTest2Component implements OnInit {
       .exit()
       .transition(transition)
       .duration(this.duration)
+      .remove()
       .attr("d", (d: any) => {
         const o = { 
           x: source.x, 
           y: source.y
         };
         return this.diagonal(o, o);
-      })
-      .remove();
+      });
 
     const manualLink = this[gLink].selectAll(".manual-link").data(this[duplicateTxPairs].filter((d: any) => !d.initial));
 
@@ -859,7 +873,7 @@ export class GraphTest2Component implements OnInit {
     };
   }
 
-  diagonal(s:any, t:any) {
+  diagonal(s: any, t: any) {
     // Define source and target x,y coordinates
     const x = s.y;
     const y = s.x;
@@ -899,7 +913,7 @@ export class GraphTest2Component implements OnInit {
   }
 
   search() {
-    const searchHierarchy = (transactions: any, found: boolean, job: boolean, count: number): [boolean, number] => {
+    const searchTransactionHierarchy = (transactions: any, found: boolean, job: boolean, count: number): [boolean, number] => {
       transactions.forEach((transaction: any) => {
         if (!job) {
           transaction.searched = job;
@@ -920,7 +934,7 @@ export class GraphTest2Component implements OnInit {
         }
 
         if (transaction.children) {
-          const [newFound, newCount] = searchHierarchy(transaction.children, found, job, 0);
+          const [newFound, newCount] = searchTransactionHierarchy(transaction.children, found, job, 0);
           if (newFound) {
             found = true;
             count += newCount
@@ -934,7 +948,7 @@ export class GraphTest2Component implements OnInit {
     const removeSearched = (nodes: any): void => {
       nodes.forEach((d: any) => {
         if (d.data.txid.includes('group')) {
-          searchHierarchy(d.data.transactions, false, false, 0);
+          searchTransactionHierarchy(d.data.transactions, false, false, 0);
         };
         d.data.searched = false;
       });
@@ -983,7 +997,7 @@ export class GraphTest2Component implements OnInit {
     const searchNodes = (nodes: any) => {
       nodes.forEach((d: any) => {
         if (d.data.txid.includes('group')) {
-          const [foundInCluster, newCount] = searchHierarchy(d.data.transactions, false, true, 0);
+          const [foundInCluster, newCount] = searchTransactionHierarchy(d.data.transactions, false, true, 0);
           d.data.searched = foundInCluster;
           count += newCount;
         } else if (searchType === 'Wallet Address' && d.data.txid.includes('txo')) {

@@ -7,10 +7,10 @@ import { Observable } from 'rxjs';
 })
 export class DataRetrievalService {
 
-  url: string = 'https://3926-130-102-13-164.ngrok-free.app/api/';
+  url: string = 'http://localhost:5000/api/';
 
   constructor(
-    private http: HttpClient,
+    private http: HttpClient
     ) {  }
 
   requestOriginDest(txid: string): Observable<any> {
@@ -23,8 +23,12 @@ export class DataRetrievalService {
   }
 
   requestPath(txid1:string, txid2: string): Observable<any>  {
+    const headers = new HttpHeaders({
+      'ngrok-skip-browser-warning': 'skip'
+    });
+
     const jsonURL = `${this.url}getPath/${txid1}&${txid2}`;
-    return this.http.get(jsonURL);
+    return this.http.get(jsonURL, {headers: headers, params: {tx1: txid1, tx2: txid2}});
   }
 
   /*
