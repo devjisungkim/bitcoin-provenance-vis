@@ -82,6 +82,7 @@ export class GraphTest2Component implements OnInit {
   searchStatusMessage: string = '';
   showSuccessMessage: boolean = false;
   searchSuccessMessage: string = '';
+  searchType: string = '';
   searchResult: any[] = [];
   transactionDetail: any;
   graphLoading: boolean = false;
@@ -216,7 +217,7 @@ export class GraphTest2Component implements OnInit {
           this.expandedCluster = parse(stringify(nearestNode));
           
           if (nearestNode.data.txid.includes('group')) {
-            const transactionsInsideCluster = JSON.parse(JSON.stringify(nearestNode.data.transactions));
+            const transactionsInsideCluster = parse(stringify(nearestNode.data.transactions));
             const subsequentClusters = nearestNode.children;
 
             // calculate the depth of tree
@@ -237,7 +238,7 @@ export class GraphTest2Component implements OnInit {
               node.data = node;
 
               if (node.children && node.children.length > 0) {
-                node.children.forEach((child:any) => releaseFromCluster(child, depth + 1, node));
+                node.children.forEach((child: any) => releaseFromCluster(child, depth + 1, node));
               } else {
                 if (subsequentClusters) {
                   const depth = nearestNode.depth + innerDepth; // - 1
@@ -249,7 +250,7 @@ export class GraphTest2Component implements OnInit {
                   let previousUpdatedCluster: any;
             
                   const subsequentClustersClone = subsequentClusters.map((group: any, index: number) => {
-                    const clonedCluster = { ...group }
+                    const clonedCluster = { ...group };
                     if (index > 0 && nextParent) {
                       if (clonedCluster.depth === previousOriginalDepth) {
                         clonedCluster.parent = previousUpdatedCluster.parent;
@@ -272,22 +273,37 @@ export class GraphTest2Component implements OnInit {
                     return clonedCluster;
                   });
 
+                  function depthEnsurer(child: any, parent: any = null) {
+                    if (parent) {
+                      child.depth = parent.depth + 1;
+                      child.parent = parent;
+                    };
+
+                    if (child.children && child.children.length > 0) {
+                      child.children.forEach((c: any) => {
+                          depthEnsurer(c, child)
+                      });
+                    } 
+                  }
+                  subsequentClustersClone.forEach((node: any) => {
+                    depthEnsurer(node);
+                  });
+                
                   const hiddenNodeIndices = subsequentClustersClone.reduce((indices: any, group: any, index: any) => {
                     if (group.data.hiddenParent === true) {
                       indices.push(index);
                     };
                     return indices;
                   }, []);
-
+    
                   if (node.txid !== 'utxo') {
                     if (!hiddenNodeAdded) {
                       const hiddenNodeChildren = {
-                        txid: 'hidden',
-                        depth: depth - 1,
                         data: {
                           txid: 'hidden',
                           children: subsequentClustersClone
                         },
+                        depth: depth - 1,
                         parent: node,
                         children: subsequentClustersClone
                       };
@@ -301,23 +317,23 @@ export class GraphTest2Component implements OnInit {
 
                     } else {
                       const hiddenNodeNoChildren = {
-                        txid: 'hidden',
-                        depth: depth - 1,
                         data: {
                           txid: 'hidden',
                         },
+                        depth: depth - 1,
                         parent: node
                       };
                       
                       node.children = [hiddenNodeNoChildren];
-                    }
-                  }
-                }
-              }
+                    };
+                  };
+                };
+              };
               return node;
-            }
+            };
 
             this.newChildren = transactionsInsideCluster.map((transaction: any) => {
+              console.log(parse(stringify(d3.hierarchy(transaction))))
               return releaseFromCluster(transaction, nearestNode.depth, nearestNode.parent);
             });
 
@@ -330,7 +346,7 @@ export class GraphTest2Component implements OnInit {
                 if (d.data.from === nearestNodeParent.data.from && d.data.to === nearestNodeParent.data.to) {
                   d.children.splice(nearestNodeIndex, 1, ...this.newChildren);
                   d.data.children.splice(nearestNodeIndex, 1, ...this.newChildren);
-
+                  
                   this.newChildren.forEach((newChild: any) => {
                     newChild.parent = d;
                   });
@@ -407,7 +423,7 @@ export class GraphTest2Component implements OnInit {
     });
   }     
 
-  async initializeTree(data: any, side: string, firstTime: boolean) {
+  initializeTree(data: any, side: string, firstTime: boolean) {
     const tree = `${side}Tree` as keyof TreeComponent;
     const root = `${side}Root` as keyof TreeComponent;
     const g = `g${side.charAt(0).toUpperCase() + side.slice(1)}` as keyof TreeComponent;
@@ -454,7 +470,7 @@ export class GraphTest2Component implements OnInit {
     this.updateTree(this[root], side)
   }
 
-  async updateTree(source: any, side: string) {
+  updateTree(source: any, side: string) {
     const tree = `${side}Tree` as keyof TreeComponent;
     const root = `${side}Root` as keyof TreeComponent;
     const links = `${side}Links` as keyof TreeComponent;
@@ -516,7 +532,7 @@ export class GraphTest2Component implements OnInit {
           };
         };
       };
-    })
+    });
     this[duplicateTxPairs] = nodePairs;
     // End of handling multiple parent issue
 
@@ -541,6 +557,22 @@ export class GraphTest2Component implements OnInit {
 
       d.data.side = side;
     });
+
+    // Ensure the x y positions are correctly set in data.
+    this[nodes].forEach((parent: any) => {
+      if (parent.data.txid.includes('group')) {
+        this[nodes].forEach((child: any) => {
+          if (child.parent && parent.data.txid === child.parent.data.txid) {
+            if (parent.y !== child.parent.y) {
+              child.parent.y = parent.y;
+            }
+            if (parent.x !== child.parent.x) {
+              child.parent.x = parent.x;
+            }
+          }
+        })
+      }
+    })
 
     hiddenNodes.forEach((d: any) => {
       d.y = maxHiddenY + (side === 'origin' ? -1 : 1) * 100;
@@ -581,7 +613,7 @@ export class GraphTest2Component implements OnInit {
       .on('click', (event: any, d: any) => {
         console.log(d)
         if (!['group', 'txo', 'hidden'].some(keyword => d.data.txid.includes(keyword))) {
-          this.transactionDetail = { txid: d.data.txid, fee: "0.00166757", in_degree: 2, out_degree: 2, total_degree: 4, num_out_degree: 0 }
+          this.transactionDetail = { txid: d.data.txid, fee: "0.00166757", in_degree: 2, out_degree: 2, total_degree: 4, nu_out_degree: 0 }
         };
       });
 
@@ -612,29 +644,26 @@ export class GraphTest2Component implements OnInit {
       });
 
     txoNodesUpdate
-      .append("text")
-      .attr('class', 'txoText')
-      .style("fill", "white")
-      .attr("dy", ".35em")
-      .attr("text-anchor", "middle")
-      .style("text-shadow", function(d: any) {
-        const fill = d.data.txid === 'utxo' ? 'green' : 'red';
-        return `8px 8px 16px ${fill}`;
+      .append("image")
+      .attr("xlink:href", (d: any) => {
+        const imagePath = `assets/images/icons/${d.data.vout_transaction_type.toLowerCase()}.png`;
+        return imagePath;
       })
-      .text(function(d: any) {
-        return d.data.value;
-      });
+      .attr("x", -25)
+      .attr("y", -25)
+      .attr("width", 50)
+      .attr("height", 50);
 
     txoNodesUpdate
       .append("text")
       .attr('class', 'txoAddress')
       .style("fill", "white")
-      .style("font-size", "13px")
-      .attr("dy", "5em")
-      .style("text-shadow", "8px 8px 16px var(--theme-bg-color)")
+      .style("font-size", "12px")
       .attr("text-anchor", "middle")
-      .text(function(d: any) {
-        return d.data.address;
+      .html((d: any) => {
+        return `<tspan x="0" y="5em">Type: ${d.data.vout_transaction_type}</tspan>
+                <tspan x="0" dy="2em">Address: ${d.data.address}</tspan>
+                <tspan x="0" dy="2em">Amount: ${d.data.value} BTC</tspan>`;
       });
   
     const groupNodesUpdate = nodeUpdate.filter((d: any) => d.data.txid.includes('group'));
@@ -669,35 +698,39 @@ export class GraphTest2Component implements OnInit {
       .attr("height", 200)
       .attr("x", -75)
       .attr('y', -100)
-      .style("fill", function(d: any) {
-        return d.parent ? "var(--content-bg-color)" : "var(--bitcoin-theme)";
-      });
+      .style("fill", "var(--content-bg-color)");
     
     transactionNodesUpdate
-      .append("foreignObject")
-      .attr("class", "transactionText")
+      .append("rect")
+      .attr("class", "probaRect")
+      .attr("rx", 6)
+      .attr("ry", 6)
+      .attr("stroke", 'none')
       .attr("width", 150)
-      .attr("height", 200)
-      .attr("x", -75)
-      .attr('y', -100)
-      .append("xhtml:div")
-      .style("width", "100%")
-      .style("height", "100%")
-      .style("box-sizing", "border-box")
-      .style("padding", "10px")
-      .append("p")
-      .html(function(d: any) {
-        return `
-          <strong>txid:</strong> ${d.data.txid} <br>
-          <strong>fee:</strong> 0.00166757 <br>
-          <strong>in_degree:</strong> 2 <br>
-          <strong>out_degree:</strong> 2 <br>
-          <strong>total_degree:</strong> 4 <br>
-          <strong>nu_out_degree:</strong> 0`;
+      .attr("height", (d: any) => {
+        const parentHeight = 200;
+        return Math.round(parentHeight * d.data.fraud_proba);
       })
-      .style("color", function(d: any) {
-        return d.parent ? "white" : "black";
-      });
+      .attr("x", -75)
+      .attr("y", (d: any) => {
+        const parentHeight = 200;
+        const height = Math.round(parentHeight * d.data.fraud_proba || 0);
+        const yOffset = parentHeight - height
+        return -100 + yOffset;
+      })
+      .style("fill", "red");
+
+    transactionNodesUpdate
+      .append("text")
+      .attr("class", "probaText")
+      .attr("x", 0)
+      .attr('y', 0)
+      .text((d: any) => {
+        return d.data.fraud_proba ? `${Math.round(d.data.fraud_proba * 100)}%` : 'Unknown';
+      })
+      .style("fill", "white")
+      .style("font-size", '40px')
+      .attr("text-anchor", 'middle')
 
     const nodeExit = node
       .exit()
@@ -734,7 +767,7 @@ export class GraphTest2Component implements OnInit {
       })
       .attr('stroke-width', 1)
       .style('stroke', ((d: any) => {
-        return !d.data.txid.includes('group') || d.data.txid === 'hidden' ? 'var(--bitcoin-theme)' : 'white';
+        return d.data.txid === 'utxo' ? 'white' : 'var(--bitcoin-theme';
       }))
       .attr('fill', 'none');
 
@@ -801,6 +834,18 @@ export class GraphTest2Component implements OnInit {
         .duration(this.duration)
         .style("opacity", 0)
         .remove();
+
+      linkTextAndArrowUpdate
+        .append('text')
+        .attr("class", "inputText")
+        .attr("fill", "white")
+        .attr("font-size", "12px")
+        .attr("x", -60)
+        .attr("y", 5)
+        .attr("text-align", "end")
+        .text((d: any) => {
+          return d.source.data.txid === 'stxo' && !['group', 'hidden'].some(keyword => d.target.data.txid.includes(keyword)) ? d.source.data.vin_transaction_type : null;
+        })
 
       linkTextAndArrowUpdate
         .append("text")
@@ -913,35 +958,41 @@ export class GraphTest2Component implements OnInit {
   }
 
   search() {
-    const searchTransactionHierarchy = (transactions: any, found: boolean, job: boolean, count: number): [boolean, number] => {
+    const searchTransactionHierarchy = (transactions: any, found: boolean, searching: boolean, count: number): [boolean, number, any[]] => {
+      const nodesFound: any[] = [];
       transactions.forEach((transaction: any) => {
-        if (!job) {
-          transaction.searched = job;
+        // Set searched field to false (reset)
+        if (!searching) {
+          transaction.searched = searching;
         } else {
-          if (searchType === 'Wallet Address' && transaction.txid.includes('txo')) {
+          if (this.searchType === 'Wallet Address' && transaction.txid.includes('txo')) {
             if (transaction.address === this.searchQuery) {
-              transaction.searched = job;
+              transaction.searched = searching;
               found = true;
               count++;
             }
           } else {
             if (transaction.txid === this.searchQuery) {
-              transaction.searched = job;
+              transaction.searched = searching;
               found = true;
               count++;
             }
           }
         }
 
+        if (this.searchType === 'Transaction' && found) {
+          nodesFound.push(transaction.txid);
+        }
+
         if (transaction.children) {
-          const [newFound, newCount] = searchTransactionHierarchy(transaction.children, found, job, 0);
+          const [newFound, newCount, newNodesFound] = searchTransactionHierarchy(transaction.children, found, searching, 0);
           if (newFound) {
             found = true;
             count += newCount
           };
         };
       });
-      return [found, count];
+      return [found, count, nodesFound];
     }
 
     // Set every searched field to false
@@ -979,12 +1030,12 @@ export class GraphTest2Component implements OnInit {
     const transactionIdRegex = /^[0-9a-fA-F]{64}$/;
     const walletAddressRegex = /^(1|3|bc)[a-km-zA-HJ-NP-Z1-9]{25,42}$/;
 
-    let searchType = '';
+    this.searchType = '';
 
     if (transactionIdRegex.test(this.searchQuery)) {
-      searchType = 'Transaction';
+      this.searchType = 'Transaction';
     } else if (walletAddressRegex.test(this.searchQuery)) {
-      searchType = 'Wallet Address';
+      this.searchType = 'Wallet Address';
     } else {
       this.showErrorMessage = true;
       this.searchErrorMessage = 'Please Enter a Valid Transaction ID or Address';
@@ -997,10 +1048,14 @@ export class GraphTest2Component implements OnInit {
     const searchNodes = (nodes: any) => {
       nodes.forEach((d: any) => {
         if (d.data.txid.includes('group')) {
-          const [foundInCluster, newCount] = searchTransactionHierarchy(d.data.transactions, false, true, 0);
-          d.data.searched = foundInCluster;
+          const [foundInGroup, newCount, nodesFound] = searchTransactionHierarchy(d.data.transactions, false, true, 0);
+          d.data.searched = foundInGroup;
           count += newCount;
-        } else if (searchType === 'Wallet Address' && d.data.txid.includes('txo')) {
+          nodesFound.forEach((node: any) => {
+            this.searchResult.push(node);
+          })
+          console.log(this.searchResult)
+        } else if (this.searchType === 'Wallet Address' && d.data.txid.includes('txo')) {
           if (d.data.address === this.searchQuery) { 
             d.data.searched = true; 
             this.searchResult.push({d});
@@ -1016,14 +1071,14 @@ export class GraphTest2Component implements OnInit {
       });
     };
 
-    this.searchStatusMessage = `Searching for ${searchType} in Origins`; searchNodes(this.originNodes); 
-    this.searchStatusMessage = `Searching for ${searchType} in Destinations`; searchNodes(this.destNodes);
+    this.searchStatusMessage = `Searching for ${this.searchType} in Origins`; searchNodes(this.originNodes); 
+    this.searchStatusMessage = `Searching for ${this.searchType} in Destinations`; searchNodes(this.destNodes);
 
     this.showStatusMessage = false;
 
     if (count === 0) {
       this.showErrorMessage = true;
-      this.searchErrorMessage = `No ${searchType} Found`;
+      this.searchErrorMessage = `No ${this.searchType} Found`;
     } else {
       this.searchResult.forEach((result: any, index: number) => {
         let id: string;
@@ -1045,14 +1100,16 @@ export class GraphTest2Component implements OnInit {
       
       this.showSuccessMessage = true;
 
-      if (searchType === 'Wallet Address') {
-        this.searchSuccessMessage = `Found ${count} Outputs Belonging To ${searchType}`;
+      if (this.searchType === 'Wallet Address') {
+        this.searchSuccessMessage = `Found ${count} Outputs Belonging To ${this.searchType}`;
       } else {
-        this.searchSuccessMessage = `Found ${searchType}`;
+        this.searchSuccessMessage = `Found ${this.searchType}`;
       };
 
-    this.updateTree(this.destRoot, 'dest');
+    console.log(this.searchResult)
+
     this.updateTree(this.originRoot, 'origin');
+    this.updateTree(this.destRoot, 'dest');
     };
   }
 
@@ -1112,5 +1169,9 @@ export class GraphTest2Component implements OnInit {
       flatten(data);
     }
     return result;
+  }
+
+  returnZero() {
+    return 0
   }
 }

@@ -53,7 +53,7 @@
 <div id="graphContainer"></div>
 
 <div class="transaction-detail">
-  <div class="detail-items" *ngFor="let item of transactionDetail | keyvalue">
+  <div class="detail-items" *ngFor="let item of transactionDetail | keyvalue : returnZero">
     <p><strong>{{ item.key }}:</strong> {{ item.value }}</p>
   </div>
   <div class="no-transaction-selected" *ngIf="!transactionDetail">
