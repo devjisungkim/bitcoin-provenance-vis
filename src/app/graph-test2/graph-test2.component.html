@@ -1,7 +1,7 @@
 <div *ngIf="graphLoading" class="graph-loading-spinner">
   <mat-spinner></mat-spinner>
 </div>
-
+<!--
 <div class="search-bar-container">
   <div class="search-container">
     <input type="text" class="search-bar" placeholder="Locate Transaction or Address..." [(ngModel)]="searchQuery" [ngClass]="{ 'invalid-input': showErrorMessage }">
@@ -49,14 +49,5 @@
     <div class="legend-text">Transaction</div>
   </div>
 </div>
-
+-->
 <div id="graphContainer"></div>
-
-<div class="transaction-detail">
-  <div class="detail-items" *ngFor="let item of transactionDetail | keyvalue : returnZero">
-    <p><strong>{{ item.key }}:</strong> {{ item.value }}</p>
-  </div>
-  <div class="no-transaction-selected" *ngIf="!transactionDetail">
-    No Transaction Selected
-  </div>
-</div>

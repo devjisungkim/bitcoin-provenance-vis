@@ -3,6 +3,8 @@ import { ActivatedRoute, Router } from '@angular/router';
 import * as d3 from 'd3';
 import { parse, stringify } from 'flatted';
 import { DataRetrievalService } from 'src/services/data-retrieval/data-retrieval.service';
+import base64Icons from '../../assets/images/icons.json';
+import { PerformanceService } from 'src/services/performance/performance.service';
 
 type TreeComponent = {
   destTree: any;
@@ -69,8 +71,8 @@ export class GraphTest2Component implements OnInit {
   private screenHeight: any;
   private width: any;
   private height: any;
-  private duration = 750;  
-  private expandedCluster: any;
+  private duration = 500;  
+  private expandedGroup: any;
   private newChildren: any;
   private zoom: any;
   private transactionNodeSize = { width: 150, height: 200 };
@@ -90,7 +92,8 @@ export class GraphTest2Component implements OnInit {
   constructor( 
     private router: Router,
     private route: ActivatedRoute,
-    private dataRetrievalService: DataRetrievalService
+    private dataRetrievalService: DataRetrievalService,
+    private performanceService: PerformanceService
   ) {  }
 
   ngOnInit(): void {
@@ -126,68 +129,28 @@ export class GraphTest2Component implements OnInit {
         .on("dblclick.zoom", null);
 
       this.svg.on("dblclick", (event: any) => {
-        function elementOutOfViewport(element: any, remove: boolean) {
-          const rect = element.getBoundingClientRect();
-          if (remove) {
-            return (
-              rect.bottom < 0 ||
-              rect.right < 0 ||
-              rect.top > (window.innerHeight || document.documentElement.clientHeight) ||
-              rect.left > (window.innerWidth || document.documentElement.clientWidth)
-            );
-          } else {
-            return (rect.left < 100 || rect.right > (window.innerWidth || document.documentElement.clientWidth) - 100);
-          }
-        }
-
-        if (!this.expandedCluster) {
+        if (!this.expandedGroup) {
           // Remove tree if not in viewport
           const originGroup = document.getElementById("origin-group");
           const destGroup = document.getElementById("dest-group");
         
-          if (originGroup && elementOutOfViewport(originGroup, true)) {
+          if (originGroup && this.elementOutOfViewport(originGroup, true)) {
             this.gOrigin
               .transition()
               .duration(this.duration)
               .remove();
-          } else if (!originGroup && destGroup && !elementOutOfViewport(destGroup, false)) {
+          } else if (!originGroup && destGroup && !this.elementOutOfViewport(destGroup, false)) {
             this.initializeTree(null, 'origin', false)
           }
 
-          if (destGroup && elementOutOfViewport(destGroup, true)) {
+          if (destGroup && this.elementOutOfViewport(destGroup, true)) {
             this.gDest
               .transition()
               .duration(this.duration)
               .remove();
-          } else if (!destGroup && originGroup && !elementOutOfViewport(originGroup, false)) {
+          } else if (!destGroup && originGroup && !this.elementOutOfViewport(originGroup, false)) {
             this.initializeTree(null, 'dest', false);
           }
-        }
-
-        function findNearestCluster(root: any, mouseX: number, mouseY: number): any {
-          let closestNode = null;
-          let closestDistance = Number.MAX_VALUE;
-        
-          function visit(node: any) {
-            if (node.data.txid.includes('group')) {
-              const [y, x] = [node.x, node.y];
-              // Euclidean distance
-              const distance = Math.sqrt((x - mouseX) ** 2 + (y - mouseY) ** 2);
-          
-              if (distance < closestDistance) {
-                closestDistance = distance;
-                closestNode = node;
-              };
-            }
-            if (node.children) {
-              node.children.forEach(visit);
-            };
-          }
-        
-          if (root.children) {
-            root.children.forEach(visit)
-          };
-          return closestNode;
         }
 
         let side: string;
@@ -196,7 +159,7 @@ export class GraphTest2Component implements OnInit {
         const currentTransform = d3.zoomTransform(this.svg.node());
         const [mouseX, mouseY] = currentTransform.invert(d3.pointer(event, this.svg.node()));
 
-        if (!this.expandedCluster) {
+        if (!this.expandedGroup) {
           side = mouseX < 0 ? 'origin' : 'dest';
 
           const root = `${side}Root` as keyof TreeComponent;
@@ -213,12 +176,12 @@ export class GraphTest2Component implements OnInit {
 
           this.groupClosed = oppositeSide;
 
-          const nearestNode = findNearestCluster(this[root], mouseX, mouseY);
-          this.expandedCluster = parse(stringify(nearestNode));
+          const nearestNode = this.findNearestGroup(this[root], mouseX, mouseY);
+          this.expandedGroup = parse(stringify(nearestNode));
           
           if (nearestNode.data.txid.includes('group')) {
-            const transactionsInsideCluster = parse(stringify(nearestNode.data.transactions));
-            const subsequentClusters = nearestNode.children;
+            const transactionsInsideGroup = parse(stringify(nearestNode.data.transactions));
+            const subsequentGroups = nearestNode.children;
 
             // calculate the depth of tree
             const getDepth = (node: any): number => {
@@ -229,118 +192,19 @@ export class GraphTest2Component implements OnInit {
               }
             };
 
-            const innerDepth = getDepth({ children: transactionsInsideCluster });
-            let hiddenNodeAdded = false;
+            const innerDepth = getDepth({ children: transactionsInsideGroup });
+            const flags = { hiddenNodeAdded: false };
 
-            function releaseFromCluster(node: any, depth: number, parent: any) {
-              node.depth = depth;
-              node.parent = parent;
-              node.data = node;
-
-              if (node.children && node.children.length > 0) {
-                node.children.forEach((child: any) => releaseFromCluster(child, depth + 1, node));
-              } else {
-                if (subsequentClusters) {
-                  const depth = nearestNode.depth + innerDepth; // - 1
-
-                  // Update subsequent nodes
-                  let nextParent: any = null;
-                  let previousHiddenParent: boolean = true;
-                  let previousOriginalDepth = -1;
-                  let previousUpdatedCluster: any;
-            
-                  const subsequentClustersClone = subsequentClusters.map((group: any, index: number) => {
-                    const clonedCluster = { ...group };
-                    if (index > 0 && nextParent) {
-                      if (clonedCluster.depth === previousOriginalDepth) {
-                        clonedCluster.parent = previousUpdatedCluster.parent;
-                        clonedCluster.data.hiddenParent = previousHiddenParent;
-                        clonedCluster.depth = previousUpdatedCluster.depth;
-                      } else {
-                        previousOriginalDepth = clonedCluster.depth;
-                        clonedCluster.parent = nextParent;
-                        clonedCluster.data.hiddenParent = false;
-                        clonedCluster.depth = depth + index;
-                      };
-                    } else {
-                      previousOriginalDepth = clonedCluster.depth;
-                      clonedCluster.parent = nextParent;
-                      clonedCluster.data.hiddenParent = previousHiddenParent;
-                      clonedCluster.depth = depth + index;
-                    }
-                    previousUpdatedCluster = clonedCluster;
-                    nextParent = clonedCluster;
-                    return clonedCluster;
-                  });
-
-                  function depthEnsurer(child: any, parent: any = null) {
-                    if (parent) {
-                      child.depth = parent.depth + 1;
-                      child.parent = parent;
-                    };
-
-                    if (child.children && child.children.length > 0) {
-                      child.children.forEach((c: any) => {
-                          depthEnsurer(c, child)
-                      });
-                    } 
-                  }
-                  subsequentClustersClone.forEach((node: any) => {
-                    depthEnsurer(node);
-                  });
-                
-                  const hiddenNodeIndices = subsequentClustersClone.reduce((indices: any, group: any, index: any) => {
-                    if (group.data.hiddenParent === true) {
-                      indices.push(index);
-                    };
-                    return indices;
-                  }, []);
-    
-                  if (node.txid !== 'utxo') {
-                    if (!hiddenNodeAdded) {
-                      const hiddenNodeChildren = {
-                        data: {
-                          txid: 'hidden',
-                          children: subsequentClustersClone
-                        },
-                        depth: depth - 1,
-                        parent: node,
-                        children: subsequentClustersClone
-                      };
-
-                      for (let i in hiddenNodeIndices) {
-                        subsequentClustersClone[i].parent = hiddenNodeChildren;
-                      };
-
-                      node.children = [hiddenNodeChildren];
-                      hiddenNodeAdded = true;
-
-                    } else {
-                      const hiddenNodeNoChildren = {
-                        data: {
-                          txid: 'hidden',
-                        },
-                        depth: depth - 1,
-                        parent: node
-                      };
-                      
-                      node.children = [hiddenNodeNoChildren];
-                    };
-                  };
-                };
-              };
-              return node;
-            };
-
-            this.newChildren = transactionsInsideCluster.map((transaction: any) => {
-              console.log(parse(stringify(d3.hierarchy(transaction))))
-              return releaseFromCluster(transaction, nearestNode.depth, nearestNode.parent);
-            });
-
+            const nearestNodeDepth = nearestNode.depth;
             const nearestNodeParent = nearestNode.parent;
             const nearestNodeIndex = nearestNode.parent.children.indexOf(nearestNode);
             let visited = false;
-            
+
+            this.newChildren = transactionsInsideGroup.map((transaction: any) => {
+              const newTransaction = d3.hierarchy(transaction);
+              return this.releaseFromGroup(newTransaction, nearestNodeDepth, nearestNodeParent, innerDepth, subsequentGroups, nearestNodeDepth, flags);
+            });
+
             this[nodes].forEach((d: any) => {
               if (d.data.txid.includes('txo') && !visited) {
                 if (d.data.from === nearestNodeParent.data.from && d.data.to === nearestNodeParent.data.to) {
@@ -365,40 +229,44 @@ export class GraphTest2Component implements OnInit {
               };
             });
 
-            this.updateTree(nearestNode, side);
+            setTimeout(() => {
+              this.updateTree(nearestNode, side);
+            }, 0);
           }
-        } else if (this.expandedCluster) {
-          side = this.expandedCluster.y < 0 ? 'origin' : 'dest';
-          oppositeSide = this.expandedCluster.y > 0 ? 'origin' : 'dest';
+        } else if (this.expandedGroup) {
+          side = this.expandedGroup.y < 0 ? 'origin' : 'dest';
+          oppositeSide = this.expandedGroup.y > 0 ? 'origin' : 'dest';
           const nodes = `${side}Nodes` as keyof TreeComponent;
 
-          const originalParent = this.expandedCluster.parent;
-          const indexOfCluster = originalParent.children.indexOf(this.expandedCluster);
+          const originalParent = this.expandedGroup.parent;
+          const indexOfGroup = originalParent.children.indexOf(this.expandedGroup);
           let visited = false;
 
           this[nodes].forEach((d: any) => {
             if (d.data.txid.includes('txo') && !visited) {
               if (d.data.from === originalParent.data.from && d.data.to === originalParent.data.to) {
-                this.expandedCluster.parent = d;
-                d.children.splice(indexOfCluster, this.newChildren.length, this.expandedCluster);
+                this.expandedGroup.parent = d;
+                d.children.splice(indexOfGroup, this.newChildren.length, this.expandedGroup);
                 visited = true;
               }
             } else if (d.data.txid === originalParent.data.txid && !visited) {
-              this.expandedCluster.parent = d;
-              d.children.splice(indexOfCluster, this.newChildren.length, this.expandedCluster);
+              this.expandedGroup.parent = d;
+              d.children.splice(indexOfGroup, this.newChildren.length, this.expandedGroup);
               visited = true;
             };
           });
 
           this.groupClosed = '';
           
-          const returnNode = this.expandedCluster;
-          this.expandedCluster = undefined;
+          const returnNode = this.expandedGroup;
+          this.expandedGroup = undefined;
 
           this.initializeTree(null, oppositeSide, false);
 
-          this.updateTree(returnNode, side);
-        }
+          setTimeout(() => {
+            this.updateTree(returnNode, side);
+          }, 0);
+        } 
       });
 
       this.route.queryParams.subscribe(queryParams => {
@@ -479,62 +347,7 @@ export class GraphTest2Component implements OnInit {
     const gLink = `g${side.charAt(0).toUpperCase() + side.slice(1)}Link` as keyof TreeComponent;
     const duplicateTxPairs = `${side}DuplicateTxPairs` as keyof TreeComponent;
 
-    // Handling multiple parent issue
-    const nodePairs: { source: any, target: any, initial: boolean }[] = []
-    const nodeUniqueMap = new Map()
-    
-    const transactionHierarchy = this[root].descendants().filter((d: any) => d.parent && !['group', 'txo', 'hidden'].some(keyword => d.data.txid.includes(keyword)));
-   
-    transactionHierarchy.forEach((d: any) => {
-      const id = d.data.txid;
-      if (!nodeUniqueMap.has(id)) {
-        nodeUniqueMap.set(id, d);
-        nodePairs.push({
-          source: d.parent,
-          target: d,
-          initial: true
-        });
-      } else {
-        const existingNode = nodeUniqueMap.get(id);
-        const parentNode = d.parent;
-      
-        if (existingNode.depth < d.depth) {
-          nodeUniqueMap.set(id, d);
-          nodePairs.forEach((node: any) => {
-            if (node.target.data.txid === id) {
-              node.target = d;
-              node.initial = false;
-              if (node.source.children) {
-                node.source.children = node.source.children.filter((child: any) => child.data.txid !== id);
-                if (node.source.children.length === 0) {
-                  node.source.children = null;
-                };
-              };
-            };
-          });
-
-          nodePairs.push({
-            source: parentNode,
-            target: d,
-            initial: true
-          });
-        } else {
-          nodePairs.push({
-            source: parentNode,
-            target: existingNode,
-            initial: false
-          });
-
-          parentNode.children = parentNode.children.filter((child: any) => child.data.txid !== id);
-
-          if (parentNode.children.length === 0) {
-            parentNode.children = null;
-          };
-        };
-      };
-    });
-    this[duplicateTxPairs] = nodePairs;
-    // End of handling multiple parent issue
+    this[duplicateTxPairs] = this.detectMutualChildInTransactions(this[root]);
 
     this[links] = this[root].descendants().slice(1);
     this[nodes] = this[root].descendants();
@@ -587,15 +400,19 @@ export class GraphTest2Component implements OnInit {
       if (node.x > right.x) right = node;
     });
 
-    const height = right.x - left.x + this.margin.top + this.margin.bottom;
+    this.renderNodes(source, this[gNode], this[nodes]);
+    this.renderLinks(source, this[gLink], this[links]);
+    this.renderAdditionalGraphElements(source, this[root], this[gLink], this[duplicateTxPairs]);
 
-    let i = 0;
+    this[nodes].forEach((d:any) => {
+        d.x0 = d.x;
+        d.y0 = d.y;
+    });
+  }
 
-    const transition = this.svg.transition()
-      .duration(this.duration)
-      //.attr("viewBox", [-this.margin.left, left.x - this.margin.top, this.width, height])
-
-    const node = this[gNode].selectAll("g.node").data(this[nodes], (d: any) => d.id || (d.id = ++i));
+  renderNodes(source: any, gNode: any, nodes: any) {
+    let id = 0;
+    const node = gNode.selectAll("g.node").data(nodes, (d: any) => d.id || (d.id = ++id));
 
     const nodeEnter = node
       .enter()
@@ -611,16 +428,13 @@ export class GraphTest2Component implements OnInit {
         return "translate(" + source.y + "," + source.x + ")";
       })
       .on('click', (event: any, d: any) => {
-        console.log(d)
-        if (!['group', 'txo', 'hidden'].some(keyword => d.data.txid.includes(keyword))) {
-          this.transactionDetail = { txid: d.data.txid, fee: "0.00166757", in_degree: 2, out_degree: 2, total_degree: 4, nu_out_degree: 0 }
-        };
+        console.log(d);
       });
 
     const nodeUpdate = nodeEnter.merge(node)
 
     nodeUpdate
-      .transition(transition)
+      .transition()
       .duration(this.duration)
       .style("opacity", (d: any) => {
         return d.data.txid === 'hidden' ? 0 : 1;
@@ -628,6 +442,8 @@ export class GraphTest2Component implements OnInit {
       .attr('transform', function(d:any) {
         return 'translate(' +  d.y + ',' + d.x + ')';
       });
+
+    nodeUpdate.filter((d: any) => d.data.txid === 'hidden' && !d.data.children).remove();
 
     const txoNodesUpdate = nodeUpdate.filter((d: any) => d.data.txid.includes('txo'));
     txoNodesUpdate.selectAll('*').remove();
@@ -641,14 +457,11 @@ export class GraphTest2Component implements OnInit {
       .attr("r", 40)
       .attr("fill", function(d: any) {
         return d.data.txid === 'utxo' ? 'green' : 'red';
-      });
+      })
 
     txoNodesUpdate
       .append("image")
-      .attr("xlink:href", (d: any) => {
-        const imagePath = `assets/images/icons/${d.data.vout_transaction_type.toLowerCase()}.png`;
-        return imagePath;
-      })
+      .attr("xlink:href", (d: any) => base64Icons[(d.data.vout_transaction_type.toLowerCase().replace(' ', '') as keyof typeof base64Icons)])
       .attr("x", -25)
       .attr("y", -25)
       .attr("width", 50)
@@ -664,8 +477,8 @@ export class GraphTest2Component implements OnInit {
         return `<tspan x="0" y="5em">Type: ${d.data.vout_transaction_type}</tspan>
                 <tspan x="0" dy="2em">Address: ${d.data.address}</tspan>
                 <tspan x="0" dy="2em">Amount: ${d.data.value} BTC</tspan>`;
-      });
-  
+      }); 
+      
     const groupNodesUpdate = nodeUpdate.filter((d: any) => d.data.txid.includes('group'));
     groupNodesUpdate.selectAll('*').remove();
     groupNodesUpdate
@@ -682,7 +495,7 @@ export class GraphTest2Component implements OnInit {
       .attr("width", 150)
       .attr("height", 100)
 
-    const transactionNodesUpdate = nodeUpdate.filter((d: any) => !d.data.txid.includes('txo') && !d.data.txid.includes('group'));
+    const transactionNodesUpdate = nodeUpdate.filter((d: any) => !['txo', 'group', 'hidden'].some(keyword => d.data.txid.includes(keyword)));
     transactionNodesUpdate.selectAll('*').remove();
     transactionNodesUpdate
       .append("rect")
@@ -732,17 +545,36 @@ export class GraphTest2Component implements OnInit {
       .style("font-size", '40px')
       .attr("text-anchor", 'middle')
 
+    transactionNodesUpdate
+      .append("foreignObject")
+      .attr("class", "txidText")
+      .attr("width", 215)
+      .attr("height", 200)
+      .attr("x", -110)
+      .attr('y', -215)
+      .append("xhtml:div")
+      .style("width", "100%")
+      .style("height", "100%")
+      .style("word-wrap", "break-word") 
+      .append("p")
+      .style('text-align', 'center')
+      .html(function(d: any) {
+        return `TXID: ${d.data.txid}`;
+      })
+
     const nodeExit = node
       .exit()
-      .transition(transition)
+      .transition()
       .duration(this.duration)
       .style("opacity", 0)
       .attr("transform", function() {
         return "translate(" + source.y + "," + source.x + ")";
       })
       .remove();
+  }
 
-    const link = this[gLink].selectAll('path.link').data(this[links], (d: any) => d.id);
+  renderLinks(source: any, gLink: any, links: any) {
+    const link = gLink.selectAll('path.link').data(links, (d: any) => d.id);
 
     const linkEnter = link
       .enter()
@@ -754,13 +586,12 @@ export class GraphTest2Component implements OnInit {
           y: source.y0 
         };
         return this.diagonal(o, o);
-      })
-      .on("click", (event: any, d: any) => console.log(d))
+      });
 
     const linkUpdate = linkEnter.merge(link);
 
     linkUpdate
-      .transition(transition)
+      .transition()
       .duration(this.duration)
       .attr("d", (d: any) => {
         return this.diagonal(d.parent, d); 
@@ -773,7 +604,7 @@ export class GraphTest2Component implements OnInit {
 
     const linkExit = link
       .exit()
-      .transition(transition)
+      .transition()
       .duration(this.duration)
       .remove()
       .attr("d", (d: any) => {
@@ -783,8 +614,10 @@ export class GraphTest2Component implements OnInit {
         };
         return this.diagonal(o, o);
       });
+  }
 
-    const manualLink = this[gLink].selectAll(".manual-link").data(this[duplicateTxPairs].filter((d: any) => !d.initial));
+  renderAdditionalGraphElements(source: any, root: any, gLink: any, duplicateTxPairs: any) {
+    const manualLink = gLink.selectAll(".manual-link").data(duplicateTxPairs.filter((d: any) => !d.initial));
 
     const manualLinkEnter = manualLink.enter()
       .append("path")
@@ -797,7 +630,7 @@ export class GraphTest2Component implements OnInit {
     const manualLinkUpdate = manualLinkEnter.merge(manualLink)
 
     manualLinkUpdate
-      .transition(transition)
+      .transition()
       .duration(this.duration)
       .attr("d", (d: any) => {
         const source = { x: d.source.x, y: d.source.y };
@@ -810,7 +643,7 @@ export class GraphTest2Component implements OnInit {
       .attr("fill", "none")
     
     const manualLinkExit = manualLink.exit()
-      .transition(transition)
+      .transition()
       .duration(this.duration)
       .attr("d", () => {
         const pathString = `M${source.y},${source.x} H${source.y + 85} L${source.y - 85},${source.x} H${source.y}`;
@@ -818,9 +651,8 @@ export class GraphTest2Component implements OnInit {
       })
       .remove()
 
-    const createLinkTextArrow = (linkData: any, source: any, i: number) => {
-      const linkTextAndArrow = this[gLink].selectAll('.link-text-group'+i)
-        .data(linkData, (d: any) => d.target.id)
+    const createLinkTextArrow = (linkData: any, i: number) => {
+      const linkTextAndArrow = gLink.selectAll('.link-text-group'+i).data(linkData, (d: any) => d.target.id)
 
       const linkTextAndArrowEnter = linkTextAndArrow.enter()
         .append("g")
@@ -829,8 +661,8 @@ export class GraphTest2Component implements OnInit {
 
       const linkTextAndArrowUpdate = linkTextAndArrowEnter.merge(linkTextAndArrow)
 
-      linkTextAndArrowUpdate.selectAll(".link-arrow, .link-text")
-        .transition(transition)
+      linkTextAndArrowUpdate.selectAll(".link-arrow, .inputText")
+        .transition()
         .duration(this.duration)
         .style("opacity", 0)
         .remove();
@@ -844,10 +676,11 @@ export class GraphTest2Component implements OnInit {
         .attr("y", 5)
         .attr("text-align", "end")
         .text((d: any) => {
-          return d.source.data.txid === 'stxo' && !['group', 'hidden'].some(keyword => d.target.data.txid.includes(keyword)) ? d.source.data.vin_transaction_type : null;
+          return d.source.data.txid === 'stxo' && !['group', 'hidden'].some(keyword => d.target.data.txid.includes(keyword)) ? d.source.data.vin_transaction_type : '';
         })
 
       linkTextAndArrowUpdate
+        .filter((d: any) => d.source.children.length === 1 && d.target.data.txid !== 'hidden')
         .append("text")
         .attr("class", "fa link-arrow")
         .attr("dy", "0.5em")
@@ -888,34 +721,81 @@ export class GraphTest2Component implements OnInit {
         });
 
       linkTextAndArrowUpdate
-        .transition(transition)
+        .transition()
         .duration(this.duration)
         .attr("transform", function (d:any) {
           return "translate(" + (d.source.y + d.target.y) / 2 + "," + (d.source.x + d.target.x) / 2 + ")";
         });
 
       linkTextAndArrow.exit()
-        .transition(transition)
+        .transition()
         .duration(this.duration)
         .style("opacity", 0)
         .attr("transform", "translate(" + source.y + "," + source.x + ")")
         .remove();
     }
 
-    createLinkTextArrow(this[root].links(), source, 1)
-    createLinkTextArrow(this[duplicateTxPairs].filter((d: any) => !d.initial), source, 2)
+    createLinkTextArrow(root.links(), 1)
+    createLinkTextArrow(duplicateTxPairs.filter((d: any) => !d.initial), 2)
   
-    this[nodes].forEach((d:any) => {
-        d.x0 = d.x;
-        d.y0 = d.y;
-    });
   }
 
-  closeTransactionDetailPopover() {
-    const transactionDetail = document.getElementById("transaction-detail");
-    if (transactionDetail) {
-      transactionDetail.classList.remove("show");
-    };
+  detectMutualChildInTransactions(root: any) {
+    const nodePairs: { source: any, target: any, initial: boolean }[] = []
+    const nodeUniqueMap = new Map()
+
+    const transactionHierarchy = root.descendants().filter((d: any) => d.parent && !['group', 'txo', 'hidden'].some(keyword => d.data.txid.includes(keyword)));
+    
+    transactionHierarchy.forEach((d: any) => {
+      const id = d.data.txid;
+      if (!nodeUniqueMap.has(id)) {
+        nodeUniqueMap.set(id, d);
+        nodePairs.push({
+          source: d.parent,
+          target: d,
+          initial: true
+        });
+      } else {
+        const existingNode = nodeUniqueMap.get(id);
+        const parentNode = d.parent;
+      
+        if (existingNode.depth < d.depth) {
+          nodeUniqueMap.set(id, d);
+          nodePairs.forEach((node: any) => {
+            if (node.target.data.txid === id) {
+              node.target = d;
+              node.initial = false;
+              if (node.source.children) {
+                node.source.children = node.source.children.filter((child: any) => child.data.txid !== id);
+                if (node.source.children.length === 0) {
+                  node.source.children = null;
+                };
+              };
+            };
+          });
+
+          nodePairs.push({
+            source: parentNode,
+            target: d,
+            initial: true
+          });
+        } else {
+          nodePairs.push({
+            source: parentNode,
+            target: existingNode,
+            initial: false
+          });
+
+          parentNode.children = parentNode.children.filter((child: any) => child.data.txid !== id);
+
+          if (parentNode.children.length === 0) {
+            parentNode.children = null;
+          };
+        };
+      };
+    });
+
+    return nodePairs;
   }
 
   diagonal(s: any, t: any) {
@@ -1113,62 +993,147 @@ export class GraphTest2Component implements OnInit {
     };
   }
 
-  /* This part is only for demo */
-  getPath(target: string, side: string) {
-    const nodes = `${side}Nodes` as keyof TreeComponent;
-    const targetNode = this[nodes].find((node: any) => node.data.txid === target);
-    const path = this.getAncestors(targetNode).reverse();
-
-    function convertToHierarchy(path: any[]): any {
-      const rootNode: any = { children: null };
-      let currentNode = rootNode;
-    
-      path.forEach((node, index) => {
-        const { children, ...newNode } = { ...node.data, children: index === path.length - 1 ? null : [] };
-        currentNode.children = [newNode];
-        currentNode = newNode;
-      });
-    
-      return rootNode.children[0];
-    }
-    
-    const pathData = convertToHierarchy(path);
-
-    const url = this.router.serializeUrl(
-      this.router.createUrlTree(['/dev2/path'])
-    );
-
-    window.open(url, '_blank');
-  }
-
-  private getAncestors(node: any) {
-    const ancestors = [];
-    let currentNode = node;
-
-    while (currentNode) {
-        ancestors.push(currentNode);
-        currentNode = currentNode.parent;
-    }
-
-    return ancestors;
-  }
-
-  private flattenHierarchy(data: any): any[] {
-    let result: any[] = [];
+  findNearestGroup(root: any, mouseX: number, mouseY: number): any {
+    let closestNode = null;
+    let closestDistance = Number.MAX_VALUE;
   
-    function flatten(item: any) {
-      result.push(item);
-      if (item.children && Array.isArray(item.children) && item.children.length > 0) {
-        item.children.forEach(flatten);
+    function visit(node: any) {
+      if (node.data.txid.includes('group')) {
+        const [y, x] = [node.x, node.y];
+        // Euclidean distance
+        const distance = Math.sqrt((x - mouseX) ** 2 + (y - mouseY) ** 2);
+    
+        if (distance < closestDistance) {
+          closestDistance = distance;
+          closestNode = node;
+        };
       }
+      if (node.children) {
+        node.children.forEach(visit);
+      };
     }
   
-    if (Array.isArray(data)) {
-      data.forEach(flatten);
+    if (root.children) {
+      root.children.forEach(visit)
+    };
+    return closestNode;
+  }
+
+  releaseFromGroup(node: any, incrementDepth: number, parent: any, innerDepth: number, subsequentGroups: any, constantNearestNodeDepth: number, flags: any) {
+    node.depth = incrementDepth;
+    node.parent = parent;
+
+    if (node.children && node.children.length > 0) {
+      node.children.forEach((child: any) => this.releaseFromGroup(child, incrementDepth + 1, node, innerDepth, subsequentGroups, constantNearestNodeDepth, flags));
     } else {
-      flatten(data);
+      // If no children -> connect to subsequentGroups
+      if (subsequentGroups) {
+        const depth = constantNearestNodeDepth + innerDepth; // - 1
+
+        // Update subsequent nodes
+        let nextParent: any = null;
+        let previousHiddenParent: boolean = true;
+        let previousOriginalDepth = -1;
+        let previousUpdatedGroup: any;
+  
+        const subsequentGroupsClone = subsequentGroups.map((group: any, index: number) => {
+          const clonedGroup = { ...group };
+          if (index > 0 && nextParent) {
+            if (clonedGroup.depth === previousOriginalDepth) {
+              clonedGroup.parent = previousUpdatedGroup.parent;
+              clonedGroup.data.hiddenParent = previousHiddenParent;
+              clonedGroup.depth = previousUpdatedGroup.depth;
+            } else {
+              previousOriginalDepth = clonedGroup.depth;
+              clonedGroup.parent = nextParent;
+              clonedGroup.data.hiddenParent = false;
+              clonedGroup.depth = depth + index;
+            };
+          } else {
+            previousOriginalDepth = clonedGroup.depth;
+            clonedGroup.parent = nextParent;
+            clonedGroup.data.hiddenParent = previousHiddenParent;
+            clonedGroup.depth = depth + index;
+          }
+          previousUpdatedGroup = clonedGroup;
+          nextParent = clonedGroup;
+          return clonedGroup;
+        });
+
+        /*
+        const depthEnsurer = (child: any, parent: any = null) => {
+          if (parent) {
+            child.depth = parent.depth + 1;
+            child.parent = parent;
+          };
+
+          if (child.children && child.children.length > 0) {
+            child.children.forEach((c: any) => {
+                depthEnsurer(c, child)
+            });
+          } 
+        }
+
+        subsequentGroupsClone.forEach((node: any) => {
+          depthEnsurer(node);
+        });
+        */
+      
+        const hiddenNodeIndices = subsequentGroupsClone.reduce((indices: any, group: any, index: any) => {
+          if (group.data.hiddenParent === true) {
+            indices.push(index);
+          };
+          return indices;
+        }, []);
+
+        if (node.data.txid !== 'utxo') {
+          if (!flags.hiddenNodeAdded) {
+            const hiddenNodeChildren = {
+              data: {
+                txid: 'hidden',
+                children: subsequentGroupsClone
+              },
+              depth: depth - 1,
+              parent: node,
+              children: subsequentGroupsClone
+            };
+
+            for (let i in hiddenNodeIndices) {
+              subsequentGroupsClone[i].parent = hiddenNodeChildren;
+            };
+
+            node.children = [hiddenNodeChildren];
+            flags.hiddenNodeAdded = true;
+
+          } else {
+            const hiddenNodeNoChildren = {
+              data: {
+                txid: 'hidden',
+              },
+              depth: depth - 1,
+              parent: node
+            };
+            
+            node.children = [hiddenNodeNoChildren];
+          };
+        };
+      };
+    };
+    return node;
+  };
+
+  elementOutOfViewport(element: any, remove: boolean) {
+    const rect = element.getBoundingClientRect();
+    if (remove) {
+      return (
+        rect.bottom < 0 ||
+        rect.right < 0 ||
+        rect.top > (window.innerHeight || document.documentElement.clientHeight) ||
+        rect.left > (window.innerWidth || document.documentElement.clientWidth)
+      );
+    } else {
+      return (rect.left < 100 || rect.right > (window.innerWidth || document.documentElement.clientWidth) - 100);
     }
-    return result;
   }
 
   returnZero() {
