@@ -1,6 +1,9 @@
 import { Component, OnInit, ViewEncapsulation } from '@angular/core';
+import { ActivatedRoute, Router } from '@angular/router';
 import * as d3 from 'd3';
 import { parse, stringify } from 'flatted';
+import { DataRetrievalService } from 'src/services/data-retrieval/data-retrieval.service';
+import base64Icons from '../../assets/images/icons.json';
 
 type TreeComponent = {
   destTree: any;
@@ -19,6 +22,14 @@ type TreeComponent = {
   gOriginNode: any;
   gOriginLink: any;
   originDuplicateTxPairs: any;
+  pathTree: any;
+  pathRoot: any;
+  pathLinks: any;
+  pathNodes: any;
+  gPath: any;
+  gPathNode: any;
+  gPathLink: any;
+  pathDuplicateTxPairs: any;
 };
 
 @Component({
@@ -30,33 +41,41 @@ type TreeComponent = {
 export class GraphTest3Component implements OnInit {
   private svg: any;
   private g: any;
-  private gDest: any;
   private gOrigin: any;
-  private destTree: any;
   private originTree: any;
-  private destRoot: any;
   private originRoot: any;
-  private destNodes: any;
   private originNodes: any;
-  private destLinks: any;
   private originLinks: any;
-  private gDestLink: any;
-  private gDestNode: any;
-  private gOriginLink: any;
   private gOriginNode: any;
-  private destDuplicateTxPairs: any;
+  private gOriginLink: any;
   private originDuplicateTxPairs: any;
+  private gDest: any;
+  private destTree: any;
+  private destRoot: any;
+  private destNodes: any;
+  private destLinks: any;
+  private gDestNode: any;
+  private gDestLink: any;
+  private destDuplicateTxPairs: any;
+  private pathTree: any;
+  private pathRoot: any;
+  private pathLinks: any;
+  private pathNodes: any;
+  private gPath: any;
+  private gPathNode: any;
+  private gPathLink: any;
+  private pathDuplicateTxPairs: any;
   private margin = { top: 20, right: 90, bottom: 30, left: 90 };
   private screenWidth: any;
   private screenHeight: any;
   private width: any;
   private height: any;
-  private duration = 750;  
-  private expandedCluster: any;
+  private duration = 500;  
+  private expandedGroup: any;
   private newChildren: any;
   private zoom: any;
   private transactionNodeSize = { width: 150, height: 200 };
-  private groupClosed: string = '';
+  private groupClosed: string = ''
   searchQuery: string = '';
   showErrorMessage: boolean = false;
   searchErrorMessage: string = '';
@@ -64,647 +83,202 @@ export class GraphTest3Component implements OnInit {
   searchStatusMessage: string = '';
   showSuccessMessage: boolean = false;
   searchSuccessMessage: string = '';
+  searchType: string = '';
+  searchResult: any[] = [];
+  transactionDetail: any;
+  graphLoading: boolean = false;
 
-  constructor(
+  constructor( 
+    private router: Router,
+    private route: ActivatedRoute,
+    private dataRetrievalService: DataRetrievalService,
+    //private performanceService: PerformanceService
   ) {  }
 
-  ngOnInit() {
+  ngOnInit(): void {
     this.screenWidth = window.innerWidth;
     this.screenHeight = window.innerHeight; 
 
-    const originData = {
-      txid: '1db0c47d1c7898e29c0c8b10c5f4528e3a7c273168614f048699f76922683f32',
-      children: [
-        {
-          txid: 'stxo',
-          address: '1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa',
-          from: 259,
-          to: 1,
-          value: 8.801,
-          children: [
-            {
-              txid: 'cluster',
-              transactions: [
-                {
-                  txid: '2a5b367e8d6c78e8b7dfde1f607dc3ebe458e56a27850e1d5c3eaf54b25f141',
-                  children: [
-                    {
-                      txid: 'stxo',
-                      address: '3Cbq7aT1tY8kMxWLbitaG7yT6bPbKChq64',
-                      from: null,
-                      to: 259,
-                      value: 0.02
-                    },
-                    {
-                      txid: 'stxo',
-                      address: '12c6DSiU4Rq3P4ZxziKxzrL5LmMBrzjrJX',
-                      from: null,
-                      to: 259,
-                      value: 1.2
-                    }
-                  ]
-                }
-              ]
-            }
-          ]
-        }
-      ]
-    };
-    
+    this.route.params.subscribe(params => {
+      this.graphLoading = true;
 
-    const destData: any = {
-      txid: '1db0c47d1c7898e29c0c8b10c5f4528e3a7c273168614f048699f76922683f32',
-      children: [
-          {
-              txid: 'stxo',
-              address: '1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa',
-              from: '1',
-              to: '2',
-              value: 7,
-              children: [
-                  {
-                      txid: 'cluster1',
-                      transactions: [
-                          {
-                              txid: '3f68b9b2f2a67c7b0562c8f4582371802da7907950a8509c67f0d0ba0f06e7aa',
-                              children: [
-                                  {
-                                      txid: 'stxo',
-                                      address: '3Cbq7aT1tY8kMxWLbitaG7yT6bPbKChq64',
-                                      from: '2',
-                                      to: '4',
-                                      value: 20,
-                                      children: [
-                                          {
-                                              txid: '4c1b99b5b8a2e6096d2f2e66175035e546f1a4fbc3940ec651baabbaf343fd7b',
-                                              children: [
-                                                  {
-                                                      txid: 'stxo',
-                                                      address: '12c6DSiU4Rq3P4ZxziKxzrL5LmMBrzjrJX',
-                                                      from: '4',
-                                                      to: '6',
-                                                      value: 6,
-                                                      children: [
-                                                          {
-                                                              txid: '5f6b46e6798aebf17d897c1e5f58b4e6f7875a84c66f1f4e854738f3e8a3b6f8',
-                                                              children: [
-                                                                  {
-                                                                      txid: 'utxo',
-                                                                      address: '12c6DSiU4Rq3P4ZxziKxzrL5LmMBrzjrJX',
-                                                                      from: '6',
-                                                                      to: null,
-                                                                      value: 0.6
-                                                                  },
-                                                                  {
-                                                                      txid: 'utxo',
-                                                                      address: '1BgGZ9tcN4rm9KBzDn7KprQz87SZ26SAMH',
-                                                                      from: '6',
-                                                                      to: null,
-                                                                      value: 12
-                                                                  }
-                                                              ]
-                                                          } 
-                                                      ]
-                                                  }
-                                              ]
-                                          }
-                                      ]
-                                  },
-                                  {
-                                      txid: 'stxo',
-                                      address: '1EHNa6Q4Jz2uvNExL497mE43ikXhwF6kZm',
-                                      from: '2',
-                                      to: '7',
-                                      value: 79,
-                                      children: [
-                                          {
-                                              txid: '6f3b6e6f8e7f3a5b3a8a8e3f2b4e8f9e8f7a4f3e7a2b5a3b5f1e8f6f3a1e9a61',
-                                              children: [
-                                                  {
-                                                      txid: 'stxo',
-                                                      address: '1EHNa6Q4Jz2uvNExL497mE43ikXhwF6kZm',
-                                                      from: '7',
-                                                      to: '6',
-                                                      value: 0.11,
-                                                      children: [
-                                                          {
-                                                              txid: '5f6b46e6798aebf17d897c1e5f58b4e6f7875a84c66f1f4e854738f3e8a3b6f8',
-                                                              children: [
-                                                                  {
-                                                                      txid: 'utxo',
-                                                                      address: '1EHNa6Q4Jz2uvNExL497mE43ikXhwF6kZm',
-                                                                      from: '6',
-                                                                      to: null,
-                                                                      value: 0.6
-                                                                  },
-                                                                  {
-                                                                      txid: 'utxo',
-                                                                      address: '1JKJgFuqUmoY9d9kL2PUmPoDz4knDgAKB',
-                                                                      from: '6',
-                                                                      to: null,
-                                                                      value: 12
-                                                                  }
-                                                              ]
-                                                          }
-                                                      ]
-                                                  }
-                                              ]
-                                          }
-                                      ]
-                                  }
-                              ]
-                          }
-                      ]
-                  }
-              ]
-          },
-          {
-              txid: 'stxo',
-              address: '3EhWPgqz8D2ZPShJd6UqcpCr3daj3vCo7k',
-              from: '1',
-              to: '3',
-              value: 8,
-              children: [
-                  {
-                      txid: 'cluster2',
-                      transactions: [
-                          {
-                              txid: '8f2b4e8f9e8f7a4f3e7a2b5a3b5f1e8f6f3a1e9a6b3e9e7f8e1a5e1a7b1e2123',
-                              children: [
-                                  {
-                                      txid: 'stxo',
-                                      address: '3FFp9uS1UqCiTNZbQiG1ue2UqUdDdJXY9D',
-                                      from: '3',
-                                      to: '5',
-                                      value: 90,
-                                      children: [
-                                          {
-                                              txid: '9e6f2a8e9a6e3b5f2b3e7e8e1f4a3e5b1f3a2f2b4e8f9e8f7a4f3e7a2b5a3c33',
-                                              children: [
-                                                  {
-                                                      txid: 'stxo',
-                                                      address: '13p1ijLwsnrcuyqcTvJXkq2ASdXqcnEBLE',
-                                                      from: '5',
-                                                      to: '21',
-                                                      value: 34
-                                                  }
-                                              ]
-                                          }
-                                      ]
-                                  },
-                                  {
-                                      txid: 'stxo',
-                                      address: '32ixVtW7pNfuv8R6wPfc6AqG3HvG8YbuFp',
-                                      from: '6',
-                                      to: '8',
-                                      value: 670,
-                                      children: [
-                                          {
-                                              txid: 'a1e9a6b3e9e7f8e1a5e1a7b1e2a9e6f2a8e9a6e3b5f2b3e7e8e1f4a3e5b10smd',
-                                              children: [
-                                                  {
-                                                      txid: 'stxo',
-                                                      address: '38Pt2Kki2veFrVq9PGGXkJVSJPy3jhmTwF',
-                                                      from: '8',
-                                                      to: '24',
-                                                      value: 1
-                                                  }
-                                              ]
-                                          }
-                                      ]
-                                  },
-                                  {
-                                      txid: 'stxo',
-                                      address: '38Pt2Kki2veFrVq9PGGXkJVSJPy3jhmTwF',
-                                      from: '3',
-                                      to: '9',
-                                      value: 1.4,
-                                      children: [
-                                          {
-                                              txid: 'b3e7a2b5a3b5f1e8f6f3a1e9a6f2b4e8f9e8f7a4f3e7a2b5a3b5f1e8f6f31234',
-                                              children: [
-                                                  {
-                                                      txid: 'utxo',
-                                                      address: '1EV8hdrBQwaMdFi5xZU3r9HGY31QzP78xD',
-                                                      from: '9',
-                                                      to: null,
-                                                      value: 91
-                                                  }
-                                              ]
-                                          }
-                                      ]
-                                  }
-                              ]
-                          }
-                      ],
-                      children: [
-                          {
-                              txid: 'cluster2-1',
-                              transactions: [
-                                  {
-                                      txid: 'stxo',
-                                      address: '1EduQkRiMdaLXySDnwNAAy6AoE2MPXf2Yx',
-                                      from: '8',
-                                      to: '21',
-                                      value: 34,
-                                      children: [
-                                          {
-                                              txid: 'c1b9e2a9e6f2a8e9a6e3b5f2b3e7e8e1f4a3e5b1f3a2f2b4e8f9e8f7a4f31111',
-                                              children: [
-                                                  {
-                                                      txid: 'stxo',
-                                                      address: '1EduQkRiMdaLXySDnwNAAy6AoE2MPXf2Yx',
-                                                      from: '21',
-                                                      to: '22',
-                                                      value: 15,
-                                                      children: [
-                                                          {
-                                                              txid: 'd1c1b9e2a9e6f2a8e9a6e3b5f2b3e7e8e1f4a3e5b1f3a2f2b4e8f9e8f7a42345',
-                                                              children: [
-                                                                  {
-                                                                      txid: 'utxo',
-                                                                      address: '1EduQkRiMdaLXySDnwNAAy6AoE2MPXf2Yx',
-                                                                      from: '22',
-                                                                      to: null,
-                                                                      value: 5
-                                                                  }
-                                                              ]
-                                                          }
-                                                      ]
-                                                  },
-                                                  {
-                                                      txid: 'utxo',
-                                                      address: '15okgyzqBc5deTEpR3v3fBM4UU4oTBv2qa',
-                                                      from: '21',
-                                                      to: null,
-                                                      value: 11
-                                                  }
-                                              ]
-                                          }
-                                      ]
-                                  },
-                                  {
-                                      txid: 'stxo',
-                                      address: '15okgyzqBc5deTEpR3v3fBM4UU4oTBv2qa',
-                                      from: '8',
-                                      to: '24',
-                                      value: 1,
-                                      children: [
-                                          {
-                                              txid: 'e1a5e1a7b1e2a9e6f2a8e9a6e3b5f2b3e7e8e1f4a3e5b1f3a2f2b4e8f9e81222',
-                                              children: [
-                                                  {
-                                                      txid: 'stxo',
-                                                      address: '15okgyzqBc5deTEpR3v3fBM4UU4oTBv2qa',
-                                                      from: '24',
-                                                      to: '25',
-                                                      value: 25,
-                                                      children: [
-                                                          {
-                                                              txid: 'f7a4f3e7a2b5a3b5f1e8f6f3a1e9a6f2b4e8f9e8f7a4f3e7a2b5a3b5f11234',
-                                                              children: [
-                                                                  {
-                                                                      txid: 'utxo',
-                                                                      address: '1BgGZ9tcN4rm9KBzDn7KprQz87SZ26SAMH',
-                                                                      from: '25',
-                                                                      to: null,
-                                                                      value: 15
-                                                                  },
-                                                                  {
-                                                                      txid: 'utxo',
-                                                                      address: '16o7YB9S4F5jMBFSycPrbKtJUUPfP7RyBp',
-                                                                      from: '25',
-                                                                      to: null,
-                                                                      value: 0.1
-                                                                  },
-                                                                  {
-                                                                      txid: 'utxo',
-                                                                      address: '3EhWPgqz8D2ZPShJd6UqcpCr3daj3vCo7k',
-                                                                      from: '25',
-                                                                      to: null,
-                                                                      value: 0.002
-                                                                  }
-                                                              ]
-                                                          }
-                                                      ]
-                                                  },
-                                                  {
-                                                      txid: 'stxo',
-                                                      address: '1BgGZ9tcN4rm9KBzDn7KprQz87SZ26SAMH',
-                                                      from: '24',
-                                                      to: '26',
-                                                      value: 22,
-                                                      children: [
-                                                          {
-                                                              txid: '60f7a4f3e7a2b5a3b5f1e8f6f3a1e9a6f2b4e8f9e8f7a4f3e7a2b5a3b5f11111',
-                                                              children: [
-                                                                  {
-                                                                      txid: 'utxo',
-                                                                      address: '12c6DSiU4Rq3P4ZxziKxzrL5LmMBrzjrJX',
-                                                                      from: '26',
-                                                                      to: null,
-                                                                      value: 10
-                                                                  }
-                                                              ]
-                                                          }
-                                                      ]
-                                                  }
-                                              ]
-                                          }
-                                      ]
-                                  }
-                              ]
-                          }
-                      ]
-                  }
-              ]
-          },
-          {
-              txid: 'utxo',
-              address: '3EhWPgqz8D2ZPShJd6UqcpCr3daj3vCo7k',
-              from: '1',
-              to: null,
-              value: 0.009
-          }
-      ]
-    };
-    
-    this.width = this.screenWidth - this.margin.left - this.margin.right;
-    this.height = this.screenHeight - this.margin.top - this.margin.bottom;
+      const type = params['type'];
 
-    this.svg = d3.selectAll('#graphContainer')
-      .append('svg')
-      .attr('width', this.screenWidth)
-      .attr('height', this.screenHeight)
-      .attr("style", "max-width: 100%; height: auto; user-select: none;");
-    
-    this.g = this.svg.append('g')
-      //.attr("transform", "translate(" + (this.width/2) + "," + (this.height/3) + ")");
-    
-    this.zoom = d3.zoom()
-      .scaleExtent([0.2, 1])
-      .on("zoom", (event: any) => {
-        this.g.attr("transform", event.transform);
-      });
+      this.width = this.screenWidth - this.margin.left - this.margin.right;
+      this.height = this.screenHeight - this.margin.top - this.margin.bottom;
 
-    this.svg.call(this.zoom)
-      .call(this.zoom.transform, d3.zoomIdentity.translate(this.width / 3, 0).scale(0.2))
-      .on("dblclick.zoom", null);
-
-    this.svg.on("dblclick", (event: any) => {
-      function elementOutOfViewport(element: any, remove: boolean) {
-        const rect = element.getBoundingClientRect();
-        if (remove) {
-          return (
-            rect.bottom < 0 ||
-            rect.right < 0 ||
-            rect.top > (window.innerHeight || document.documentElement.clientHeight) ||
-            rect.left > (window.innerWidth || document.documentElement.clientWidth)
-          );
-        } else {
-          return (rect.left < 100 || rect.right > (window.innerWidth || document.documentElement.clientWidth) - 100);
-        }
-      }
-
-      if (!this.expandedCluster) {
-        // Remove tree if not in viewport
-        const originGroup = document.getElementById("origin-group");
-        const destGroup = document.getElementById("dest-group");
+      this.svg = d3.selectAll('#graphContainer')
+        .append('svg')
+        .attr('width', this.screenWidth)
+        .attr('height', this.screenHeight)
+        .attr('viewBox', `-${this.screenWidth/4} -${this.screenHeight/2} ${this.screenWidth} ${this.screenHeight}`)
+        .attr("style", "max-width: 100%; height: auto; user-select: none;");
       
-        if (originGroup && elementOutOfViewport(originGroup, true)) {
-          this.gOrigin
-            .transition()
-            .duration(this.duration)
-            .remove();
-        } else if (!originGroup && destGroup && !elementOutOfViewport(destGroup, false)) {
-          this.initializeTree(null, 'origin', false)
-        }
-
-        if (destGroup && elementOutOfViewport(destGroup, true)) {
-          this.gDest
-            .transition()
-            .duration(this.duration)
-            .remove();
-        } else if (!destGroup && originGroup && !elementOutOfViewport(originGroup, false)) {
-          this.initializeTree(null, 'dest', false);
-        }
-      }
-
-      function findNearestCluster(root: any, mouseX: number, mouseY: number): any {
-        let closestNode = null;
-        let closestDistance = Number.MAX_VALUE;
+      this.g = this.svg.append('g')
+        //.attr("transform", "translate(" + this.width + "," + this.height + ")");
       
-        function visit(node: any) {
-          if (node.data.txid.includes('cluster')) {
-            const [y, x] = [node.x, node.y];
-            // Euclidean distance
-            const distance = Math.sqrt((x - mouseX) ** 2 + (y - mouseY) ** 2);
-        
-            if (distance < closestDistance) {
-              closestDistance = distance;
-              closestNode = node;
-            };
-          }
-          if (node.children) {
-            node.children.forEach(visit);
-          };
-        }
-      
-        if (root.children) {
-          root.children.forEach(visit)
-        };
-        return closestNode;
-      }
-
-      let side: string;
-      let oppositeSide: string;
-
-      const currentTransform = d3.zoomTransform(this.svg.node());
-      const [mouseX, mouseY] = currentTransform.invert(d3.pointer(event, this.svg.node()));
-
-      if (!this.expandedCluster) {
-        side = mouseX < 0 ? 'origin' : 'dest';
-
-        const root = `${side}Root` as keyof TreeComponent;
-        const nodes = `${side}Nodes` as keyof TreeComponent;
-
-        // Remove the opposite tree while other tree is focused (purpose: to reduce the number of nodes)
-        oppositeSide = mouseX > 0 ? 'origin' : 'dest';
-        const oppositeGroup = `g${oppositeSide.charAt(0).toUpperCase() + oppositeSide.slice(1)}` as keyof TreeComponent;
-        this[oppositeGroup]
-          .transition()
-          .duration(this.duration)
-          .style("opacity", 0)
-          .remove();
-
-        this.groupClosed = oppositeSide;
-
-        const nearestNode = findNearestCluster(this[root], mouseX, mouseY);
-        this.expandedCluster = parse(stringify(nearestNode));
-        
-        if (nearestNode.data.txid.includes('cluster')) {
-          const transactionsInsideCluster = JSON.parse(JSON.stringify(nearestNode.data.transactions));
-          const subsequentClusters = nearestNode.children;
-
-          // calculate the depth of tree
-          const getDepth = (node: any): number => {
-            if (!node.children || node.children.length === 0) {
-                return 1;
-            } else {
-                return 1 + Math.max(...node.children.map(getDepth));
-            }
-          };
-
-          const innerDepth = getDepth({ children: transactionsInsideCluster });
-          let hiddenNodeAdded = false;
-
-          function releaseFromCluster(node: any, depth: number, parent: any) {
-            node.depth = depth;
-            node.parent = parent;
-            node.data = node;
-
-            if (node.children && node.children.length > 0) {
-              node.children.forEach((child:any) => releaseFromCluster(child, depth + 1, node));
-            } else {
-              if (subsequentClusters) {
-                const depth = nearestNode.depth + innerDepth; // - 1
-
-                // Update subsequent nodes
-                let nextParent: any = null;
-                let previousHiddenParent: boolean = true;
-                let previousOriginalDepth = -1;
-                let previousUpdatedCluster: any;
-          
-                const subsequentClustersClone = subsequentClusters.map((cluster:any, index:number) => {
-                  const clonedCluster = { ...cluster }
-                  if (index > 0 && nextParent) {
-                    if (clonedCluster.depth === previousOriginalDepth) {
-                      clonedCluster.parent = previousUpdatedCluster.parent;
-                      clonedCluster.data.hiddenParent = previousHiddenParent;
-                      clonedCluster.depth = previousUpdatedCluster.depth;
-                    } else {
-                      previousOriginalDepth = clonedCluster.depth;
-                      clonedCluster.parent = nextParent;
-                      clonedCluster.data.hiddenParent = false;
-                      clonedCluster.depth = depth + index;
-                    };
-                  } else {
-                    previousOriginalDepth = clonedCluster.depth;
-                    clonedCluster.parent = nextParent;
-                    clonedCluster.data.hiddenParent = previousHiddenParent;
-                    clonedCluster.depth = depth + index;
-                  }
-                  previousUpdatedCluster = clonedCluster;
-                  nextParent = clonedCluster;
-                  return clonedCluster;
-                });
-
-                const hiddenNodeIndices = subsequentClustersClone.reduce((indices: any, cluster: any, index: any) => {
-                  if (cluster.data.hiddenParent === true) {
-                    indices.push(index);
-                  };
-                  return indices;
-                }, []);
-
-                if (node.txid !== 'utxo') {
-                  if (!hiddenNodeAdded) {
-                    const hiddenNodeChildren = {
-                      txid: 'hidden',
-                      depth: depth - 1,
-                      data: {
-                        txid: 'hidden',
-                        children: subsequentClustersClone
-                      },
-                      parent: node,
-                      children: subsequentClustersClone
-                    };
-
-                    for (let i in hiddenNodeIndices) {
-                      subsequentClustersClone[i].parent = hiddenNodeChildren;
-                    };
-
-                    node.children = [hiddenNodeChildren];
-                    hiddenNodeAdded = true;
-
-                  } else {
-                    const hiddenNodeNoChildren = {
-                      txid: 'hidden',
-                      depth: depth - 1,
-                      data: {
-                        txid: 'hidden',
-                      },
-                      parent: node
-                    };
-                    
-                    node.children = [hiddenNodeNoChildren];
-                  }
-                }
-              }
-            }
-            return node;
-          }
-
-          this.newChildren = transactionsInsideCluster.map((transaction: any) => {
-            return releaseFromCluster(transaction, nearestNode.depth, nearestNode.parent);
-          });
-
-          const nearestNodeParent = nearestNode.parent;
-          const nearestNodeIndex = nearestNode.parent.children.indexOf(nearestNode);
-          let visited = false;
-          
-          this[nodes].forEach((d: any) => {
-            if (d.data.txid.includes('txo') && !visited) {
-              if (d.data.from === nearestNodeParent.data.from && d.data.to === nearestNodeParent.data.to) {
-                d.children.splice(nearestNodeIndex, 1, ...this.newChildren);
-                d.data.children.splice(nearestNodeIndex, 1, ...this.newChildren);
-                visited = true;
-              }
-            } else if (d.data.txid === nearestNodeParent.data.txid && !visited) {
-              d.children.splice(nearestNodeIndex, 1, ...this.newChildren);
-              d.data.children.splice(nearestNodeIndex, 1, ...this.newChildren);
-              visited = true;
-            };
-          });
-
-          this.updateTree(nearestNode, side);
-        }
-      } else if (this.expandedCluster) {
-        side = this.expandedCluster.y < 0 ? 'origin' : 'dest';
-        oppositeSide = this.expandedCluster.y > 0 ? 'origin' : 'dest';
-        const nodes = `${side}Nodes` as keyof TreeComponent;
-
-        const originalParent = this.expandedCluster.parent;
-        const indexOfCluster = originalParent.children.indexOf(this.expandedCluster);
-        let visited = false;
-
-        this[nodes].forEach((d: any) => {
-          if (d.data.txid.includes('txo') && !visited) {
-            if (d.data.from === originalParent.data.from && d.data.to === originalParent.data.to) {
-              d.children.splice(indexOfCluster, this.newChildren.length, this.expandedCluster);
-              visited = true;
-            }
-          } else if (d.data.txid === originalParent.data.txid && !visited) {
-            d.children.splice(indexOfCluster, this.newChildren.length, this.expandedCluster);
-            visited = true;
-          };
+      this.zoom = d3.zoom()
+        .scaleExtent([0.001, 2])
+        .on("zoom", (event: any) => {
+          this.g.attr("transform", event.transform);
         });
 
-        this.groupClosed = '';
+      this.svg.call(this.zoom)
+        .call(this.zoom.transform, d3.zoomIdentity.translate(this.width / 3, 0).scale(0.2))
+        .on("dblclick.zoom", null);
+
+      this.svg.on("dblclick", (event: any) => {
+        if (!this.expandedGroup) {
+          // Remove tree if not in viewport
+          const originGroup = document.getElementById("origin-group");
+          const destGroup = document.getElementById("dest-group");
         
-        const returnNode = this.expandedCluster;
-        this.expandedCluster = undefined;
+          if (originGroup && this.elementOutOfViewport(originGroup, true)) {
+            this.gOrigin
+              .transition()
+              .duration(this.duration)
+              .remove();
+          } else if (!originGroup && destGroup && !this.elementOutOfViewport(destGroup, false)) {
+            this.initializeTree(null, 'origin', false)
+          }
 
-        this.initializeTree(null, oppositeSide, false);
+          if (destGroup && this.elementOutOfViewport(destGroup, true)) {
+            this.gDest
+              .transition()
+              .duration(this.duration)
+              .remove();
+          } else if (!destGroup && originGroup && !this.elementOutOfViewport(originGroup, false)) {
+            this.initializeTree(null, 'dest', false);
+          }
+        }
 
-        this.updateTree(returnNode, side);
-      }
+        let side: string;
+        let oppositeSide: string;
+
+        const currentTransform = d3.zoomTransform(this.svg.node());
+        const [mouseX, mouseY] = currentTransform.invert(d3.pointer(event, this.svg.node()));
+
+        if (!this.expandedGroup) {
+          side = mouseX < 0 ? 'origin' : 'dest';
+
+          const root = `${side}Root` as keyof TreeComponent;
+          const nodes = `${side}Nodes` as keyof TreeComponent;
+
+          // Remove the opposite tree while other tree is focused (purpose: to reduce the number of nodes)
+          oppositeSide = mouseX > 0 ? 'origin' : 'dest';
+          const oppositeGroup = `g${oppositeSide.charAt(0).toUpperCase() + oppositeSide.slice(1)}` as keyof TreeComponent;
+          this[oppositeGroup]
+            .transition()
+            .duration(this.duration)
+            .style("opacity", 0)
+            .remove();
+
+          this.groupClosed = oppositeSide;
+
+          const nearestNode = this.findNearestGroup(this[root], mouseX, mouseY);
+          this.expandedGroup = parse(stringify(nearestNode));
+          
+          if (nearestNode.data.txid.includes('group')) {
+            const transactionsInsideGroup = parse(stringify(nearestNode.data.transactions));
+            const subsequentGroups = nearestNode.children;
+
+            // calculate the depth of tree
+            const getDepth = (node: any): number => {
+              if (!node.children || node.children.length === 0) {
+                  return 1;
+              } else {
+                  return 1 + Math.max(...node.children.map(getDepth));
+              }
+            };
+
+            const innerDepth = getDepth({ children: transactionsInsideGroup });
+            const flags = { hiddenNodeAdded: false };
+
+            const nearestNodeDepth = nearestNode.depth;
+            const nearestNodeParent = nearestNode.parent;
+            const nearestNodeIndex = nearestNode.parent.children.indexOf(nearestNode);
+            let visited = false;
+
+            this.newChildren = transactionsInsideGroup.map((transaction: any) => {
+              const newTransaction = d3.hierarchy(transaction);
+              return this.releaseFromGroup(newTransaction, nearestNodeDepth, nearestNodeParent, innerDepth, subsequentGroups, nearestNodeDepth, flags);
+            });
+
+            this[nodes].forEach((d: any) => {
+              if (d.data.txid.includes('txo') && !visited) {
+                if (d.data.from === nearestNodeParent.data.from && d.data.to === nearestNodeParent.data.to) {
+                  d.children.splice(nearestNodeIndex, 1, ...this.newChildren);
+                  d.data.children.splice(nearestNodeIndex, 1, ...this.newChildren);
+                  
+                  this.newChildren.forEach((newChild: any) => {
+                    newChild.parent = d;
+                  });
+
+                  visited = true;
+                }
+              } else if (d.data.txid === nearestNodeParent.data.txid && !visited) {
+                d.children.splice(nearestNodeIndex, 1, ...this.newChildren);
+                d.data.children.splice(nearestNodeIndex, 1, ...this.newChildren);
+
+                this.newChildren.forEach((newChild: any) => {
+                  newChild.parent = d;
+                });
+                
+                visited = true;
+              };
+            });
+
+            setTimeout(() => {
+              this.updateTree(nearestNode, side);
+            }, 0);
+          }
+        } else if (this.expandedGroup) {
+          side = this.expandedGroup.y < 0 ? 'origin' : 'dest';
+          oppositeSide = this.expandedGroup.y > 0 ? 'origin' : 'dest';
+          const nodes = `${side}Nodes` as keyof TreeComponent;
+
+          const originalParent = this.expandedGroup.parent;
+          const indexOfGroup = originalParent.children.indexOf(this.expandedGroup);
+          let visited = false;
+
+          this[nodes].forEach((d: any) => {
+            if (d.data.txid.includes('txo') && !visited) {
+              if (d.data.from === originalParent.data.from && d.data.to === originalParent.data.to) {
+                this.expandedGroup.parent = d;
+                d.children.splice(indexOfGroup, this.newChildren.length, this.expandedGroup);
+                visited = true;
+              }
+            } else if (d.data.txid === originalParent.data.txid && !visited) {
+              this.expandedGroup.parent = d;
+              d.children.splice(indexOfGroup, this.newChildren.length, this.expandedGroup);
+              visited = true;
+            };
+          });
+
+          this.groupClosed = '';
+          
+          const returnNode = this.expandedGroup;
+          this.expandedGroup = undefined;
+
+          this.initializeTree(null, oppositeSide, false);
+
+          setTimeout(() => {
+            this.updateTree(returnNode, side);
+          }, 0);
+        } 
+      });
+
+      this.route.queryParams.subscribe(queryParams => {
+        const selected_txid = queryParams['tx'];
+        this.dataRetrievalService.requestOrigin(selected_txid).subscribe(async (data: any) => { 
+          await this.initializeTree(data['originData'], 'origin', true);
+          this.graphLoading = false;
+        });
+      })
     });
-    
-    //this.initializeTree(originData, 'origin', true);
-    this.initializeTree(destData, 'dest', true);
   }     
 
-  initializeTree(data: any, side: string, firstTime: boolean) {
+  private initializeTree(data: any, side: string, firstTime: boolean) {
     const tree = `${side}Tree` as keyof TreeComponent;
     const root = `${side}Root` as keyof TreeComponent;
     const g = `g${side.charAt(0).toUpperCase() + side.slice(1)}` as keyof TreeComponent;
@@ -714,8 +288,10 @@ export class GraphTest3Component implements OnInit {
     if (firstTime) {
       this[root] = d3.hierarchy(data);
       this[tree] = d3.tree()
-                      .size([2 * Math.PI, 250])
-                      .separation((a, b) => (a.parent === b.parent ? 1 : 2) / a.depth);             
+                    .nodeSize([this.transactionNodeSize.height, this.transactionNodeSize.width])
+                    .separation((a, b) => {
+                      return a.parent === b.parent ? 1.25 : 1.25;
+                    });
     }
 
     this[g] = this.g.append('g')
@@ -739,7 +315,7 @@ export class GraphTest3Component implements OnInit {
     this[root].y0 = 0;
 
     // Expand all nodes
-    this[root].descendants().forEach((d:any) => {
+    this[root].descendants().forEach((d: any) => {
       if (d._children) {
         d.children = d._children;
         d._children = null;
@@ -749,21 +325,434 @@ export class GraphTest3Component implements OnInit {
     this.updateTree(this[root], side)
   }
 
-  updateTree(source: any, side: string) {
+  private updateTree(source: any, side: string) {
     const tree = `${side}Tree` as keyof TreeComponent;
     const root = `${side}Root` as keyof TreeComponent;
     const links = `${side}Links` as keyof TreeComponent;
     const nodes = `${side}Nodes` as keyof TreeComponent;
     const gNode = `g${side.charAt(0).toUpperCase() + side.slice(1)}Node` as keyof TreeComponent;
     const gLink = `g${side.charAt(0).toUpperCase() + side.slice(1)}Link` as keyof TreeComponent;
+
+    this.detectMutualChildInTransactions(side, this[root]);
+
+    this[links] = this[root].descendants().slice(1);
+    this[nodes] = this[root].descendants();
+
+    this[tree](this[root]);
+
+    let averageX = 0;
+    let maxHiddenY = 0;
+    const hiddenNodes = this[nodes].filter((d: any) => d.data.txid === 'hidden');
+    if (hiddenNodes.length > 0) {
+      averageX = hiddenNodes.reduce((sum: any, node: any) => sum + node.x, 0) / hiddenNodes.length;
+    };
+
+    this[nodes].forEach((d: any) => {
+      d.y = (side === 'origin' ? -1 : 1) * d.depth * 300;
+
+      if (d.data.txid === 'hidden' && Math.abs(maxHiddenY) < Math.abs(d.y)) {
+          maxHiddenY = d.y;
+      };
+
+      d.data.side = side;
+    });
+
+    // Ensure the x y positions are correctly set in data.
+    this[nodes].forEach((parent: any) => {
+      if (parent.data.txid.includes('group')) {
+        this[nodes].forEach((child: any) => {
+          if (child.parent && parent.data.txid === child.parent.data.txid) {
+            if (parent.y !== child.parent.y) {
+              child.parent.y = parent.y;
+            }
+            if (parent.x !== child.parent.x) {
+              child.parent.x = parent.x;
+            }
+          }
+        })
+      }
+    })
+
+    hiddenNodes.forEach((d: any) => {
+      d.y = maxHiddenY + (side === 'origin' ? -1 : 1) * 100;
+      d.x = averageX;
+    });
+
+    let left = this[root];
+    let right = this[root];
+
+    this[root].eachBefore((node: any) => {
+      if (node.x < left.x) left = node;
+      if (node.x > right.x) right = node;
+    });
+
+    this.renderNodes(source, side, this[nodes]);
+    this.renderLinks(source, side, this[links]);
+    this.renderAdditionalGraphElements(source, side, this[root]);
+
+    this[nodes].forEach((d:any) => {
+        d.x0 = d.x;
+        d.y0 = d.y;
+    });
+  }
+
+  private renderNodes(source: any, side: string, nodes: any) {
+    const gNode = `g${side.charAt(0).toUpperCase() + side.slice(1)}Node` as keyof TreeComponent;
+
+    let id = 0;
+    const node = this[gNode].selectAll("g.node").data(nodes, (d: any) => d.id || (d.id = ++id));
+
+    const nodeEnter = node
+      .enter()
+      .append("g")
+      .attr('class', 'node')
+      .attr('id', (d: any) => {
+        if (d.data.txid.includes('txo')) {
+          return `node-${d.data.address}`;
+        }
+        return `node-${d.data.txid}`;
+      })
+      .attr("transform", function() {
+        return "translate(" + source.y + "," + source.x + ")";
+      })
+      .on('click', (event: any, d: any) => {
+        console.log(d);
+      });
+
+    const nodeUpdate = nodeEnter.merge(node)
+
+    nodeUpdate
+      .transition()
+      .duration(this.duration)
+      .style("opacity", (d: any) => {
+        return d.data.txid === 'hidden' ? 0 : 1;
+      })
+      .attr('transform', function(d:any) {
+        return 'translate(' +  d.y + ',' + d.x + ')';
+      });
+
+    nodeUpdate.filter((d: any) => d.data.txid === 'hidden' && !d.data.children).remove();
+
+    const txoNodesUpdate = nodeUpdate.filter((d: any) => d.data.txid.includes('txo'));
+    txoNodesUpdate.selectAll('*').remove();
+    txoNodesUpdate
+      .append('circle')
+      .attr("class", (d: any) => {
+        return d.data.searched ? "highlighted-node txoCircle" : "txoCircle";
+      })
+      .attr('stroke', 'none')
+      .attr("stroke-opacity", "1")
+      .attr("r", 40)
+      .attr("fill", function(d: any) {
+        return d.data.txid === 'utxo' ? 'green' : 'red';
+      })
+
+    txoNodesUpdate
+      .append("image")
+      .attr("xlink:href", (d: any) => base64Icons[(d.data.vout_transaction_type.toLowerCase().replace(' ', '') as keyof typeof base64Icons)])
+      .attr("x", -25)
+      .attr("y", -25)
+      .attr("width", 50)
+      .attr("height", 50);
+
+    txoNodesUpdate
+      .append("text")
+      .attr('class', 'txoAddress')
+      .style("fill", "white")
+      .style("font-size", "12px")
+      .attr("text-anchor", "middle")
+      .html((d: any) => {
+        return `<tspan x="0" y="5em">Type: ${d.data.vout_transaction_type}</tspan>
+                <tspan x="0" dy="2em">Address: ${d.data.address}</tspan>
+                <tspan x="0" dy="2em">Amount: ${d.data.value} BTC</tspan>`;
+      }); 
+      
+    const groupNodesUpdate = nodeUpdate.filter((d: any) => d.data.txid.includes('group'));
+    groupNodesUpdate.selectAll('*').remove();
+    groupNodesUpdate
+      .append("rect")
+      .attr("class", (d: any) => {
+        return d.data.searched ? "highlighted-node groupRect" : "groupRect";
+      })
+      .style("fill", "var(--theme-bg-color)")
+      .attr("stroke-width", 1)
+      .attr("stroke", 'cyan')
+      .attr("stroke-opacity", "1")
+      .attr("x", -75)
+      .attr('y', -50)
+      .attr("width", 150)
+      .attr("height", 100)
+
+    groupNodesUpdate
+      .append("text")
+      .attr("class", "sumText")
+      .style("fill", "white")
+      .style("font-size", "12px")
+      .attr("text-anchor", "middle")
+      .html((d: any) => {
+        const txCountInGroup = d.data.txCountInGroup ? d.data.txCountInGroup : '15';
+        const fraudTxCountInGroup = d.data.fraudTxCount ? d.data.fraudTxCount : '6';
+        return `<tspan x="0">Potential Fraud TX</tspan>
+                <tspan x="0" dy="2em">${fraudTxCountInGroup} / ${txCountInGroup}</tspan>`;
+      }); 
+
+    const transactionNodesUpdate = nodeUpdate.filter((d: any) => !['txo', 'group', 'hidden'].some(keyword => d.data.txid.includes(keyword)));
+    transactionNodesUpdate.selectAll('*').remove();
+    transactionNodesUpdate
+      .append("rect")
+      .attr("class", (d: any) => {
+        return d.data.searched ? "highlighted-node transactionRect" : "transactionRect";
+      })
+      .attr("rx", 6)
+      .attr("ry", 6)
+      .attr("stroke-width", 3)
+      .attr("stroke-opacity", "1")
+      .attr("stroke", 'var(--bitcoin-theme')
+      .attr("width", 150) 
+      .attr("height", 200)
+      .attr("x", -75)
+      .attr('y', -100)
+      .style("fill", "var(--content-bg-color)");
+    
+    transactionNodesUpdate
+      .append("rect")
+      .attr("class", "probaRect")
+      .attr("rx", 6)
+      .attr("ry", 6)
+      .attr("stroke", 'none')
+      .attr("width", 150)
+      .attr("height", (d: any) => {
+        const parentHeight = 200;
+        return Math.round(parentHeight * d.data.fraud_proba);
+      })
+      .attr("x", -75)
+      .attr("y", (d: any) => {
+        const parentHeight = 200;
+        const height = Math.round(parentHeight * d.data.fraud_proba || 0);
+        const yOffset = parentHeight - height
+        return -100 + yOffset;
+      })
+      .style("fill", "red");
+
+    transactionNodesUpdate
+      .append("text")
+      .attr("class", "probaText")
+      .attr("x", 0)
+      .attr('y', 0)
+      .text((d: any) => {
+        return d.data.fraud_proba ? `${Math.round(d.data.fraud_proba * 100)}%` : 'Unknown';
+      })
+      .style("fill", "white")
+      .style("font-size", '40px')
+      .attr("text-anchor", 'middle')
+
+    transactionNodesUpdate
+      .append("foreignObject")
+      .attr("class", "txidText")
+      .attr("width", 215)
+      .attr("height", 200)
+      .attr("x", -110)
+      .attr('y', -215)
+      .append("xhtml:div")
+      .style("width", "100%")
+      .style("height", "100%")
+      .style("word-wrap", "break-word") 
+      .append("p")
+      .style('text-align', 'center')
+      .html(function(d: any) {
+        return `TXID: ${d.data.txid}`;
+      })
+
+    const nodeExit = node
+      .exit()
+      .transition()
+      .duration(this.duration)
+      .style("opacity", 0)
+      .attr("transform", function() {
+        return "translate(" + source.y + "," + source.x + ")";
+      })
+      .remove();
+  }
+
+  private renderLinks(source: any, side: string, links: any) {
+    const gLink = `g${side.charAt(0).toUpperCase() + side.slice(1)}Link` as keyof TreeComponent;
+
+    const link = this[gLink].selectAll('path.link').data(links, (d: any) => d.id);
+
+    const linkEnter = link
+      .enter()
+      .insert("path", "g")
+      .attr('class', 'link')
+      .attr("d", () => {
+        const o = { 
+          x: source.x0, 
+          y: source.y0 
+        };
+        return this.diagonal(o, o);
+      });
+
+    const linkUpdate = linkEnter.merge(link);
+
+    linkUpdate
+      .transition()
+      .duration(this.duration)
+      .attr("d", (d: any) => {
+        return this.diagonal(d.parent, d); 
+      })
+      .attr('stroke-width', 1)
+      .style('stroke', ((d: any) => {
+        return d.data.txid === 'utxo' ? 'white' : 'var(--bitcoin-theme';
+      }))
+      .attr('fill', 'none');
+
+    const linkExit = link
+      .exit()
+      .transition()
+      .duration(this.duration)
+      .remove()
+      .attr("d", (d: any) => {
+        const o = { 
+          x: source.x, 
+          y: source.y
+        };
+        return this.diagonal(o, o);
+      });
+  }
+
+  private renderAdditionalGraphElements(source: any, side: string, root: any) {
+    const gLink = `g${side.charAt(0).toUpperCase() + side.slice(1)}Link` as keyof TreeComponent;
     const duplicateTxPairs = `${side}DuplicateTxPairs` as keyof TreeComponent;
 
-    // Handling multiple parent issue
+    const manualLink = this[gLink].selectAll(".manual-link").data(this[duplicateTxPairs].filter((d: any) => !d.initial));
+
+    const manualLinkEnter = manualLink.enter()
+      .append("path")
+      .attr("class", "manual-link")
+      .attr("d", () => {
+        const pathString = `M${source.y},${source.x} H${source.y + 85} L${source.y - 85},${source.x} H${source.y}`;
+        return pathString;
+      });
+
+    const manualLinkUpdate = manualLinkEnter.merge(manualLink)
+
+    manualLinkUpdate
+      .transition()
+      .duration(this.duration)
+      .attr("d", (d: any) => {
+        const source = { x: d.source.x, y: d.source.y };
+        const target = { x: d.target.x, y: d.target.y };
+        const pathString = `M${source.y},${source.x} H${source.y + 85} L${target.y - 85},${target.x} H${target.y}`;
+        return pathString;
+      })
+      .attr("stroke", "var(--bitcoin-theme)")
+      .attr("stroke-width", 1)
+      .attr("fill", "none")
+    
+    const manualLinkExit = manualLink.exit()
+      .transition()
+      .duration(this.duration)
+      .attr("d", () => {
+        const pathString = `M${source.y},${source.x} H${source.y + 85} L${source.y - 85},${source.x} H${source.y}`;
+        return pathString;
+      })
+      .remove()
+
+    const createLinkTextArrow = (linkData: any, i: number) => {
+      const linkTextAndArrow = this[gLink].selectAll('.link-text-group'+i).data(linkData, (d: any) => d.target.id)
+
+      const linkTextAndArrowEnter = linkTextAndArrow.enter()
+        .append("g")
+        .attr("class", "link-text-group"+i)
+        .attr("transform", "translate(" + source.y + "," + source.x + ")")
+
+      const linkTextAndArrowUpdate = linkTextAndArrowEnter.merge(linkTextAndArrow)
+
+      linkTextAndArrowUpdate.selectAll(".link-arrow, .inputText")
+        .transition()
+        .duration(this.duration)
+        .style("opacity", 0)
+        .remove();
+
+      linkTextAndArrowUpdate
+        .append('text')
+        .attr("class", "inputText")
+        .attr("fill", "white")
+        .attr("font-size", "12px")
+        .attr("x", -60)
+        .attr("y", 5)
+        .attr("text-align", "end")
+        .text((d: any) => {
+          return d.source.data.txid === 'stxo' && !['group', 'hidden'].some(keyword => d.target.data.txid.includes(keyword)) ? d.source.data.vin_transaction_type : '';
+        })
+
+      linkTextAndArrowUpdate
+        .filter((d: any) => d.source.children.length === 1 && d.target.data.txid !== 'hidden')
+        .append("text")
+        .attr("class", "fa link-arrow")
+        .attr("dy", "0.5em")
+        .attr("text-anchor", "middle")
+        .style("fill", "white")
+        .text('\uf106')
+        .style("font-size", "22px")
+        .style("transform", (d: any) => {
+          const translateY = -30;
+          if (i === 1) {
+            let rotateDeg = 0;
+            // Left side
+            if (d.target.y < 0) {
+              if (d.source.x > d.target.x) {
+                // Head downwards
+                rotateDeg = 180;
+              } else if (d.source.x === d.target.x) {
+                // Head right
+                rotateDeg = 90;
+              };
+            } else {
+              if (d.source.x < d.target.x) {
+                // Head upwards
+                rotateDeg = 180;
+              } else if (d.source.x === d.target.x) {
+                // Head right
+                rotateDeg = 90;
+              };
+            };
+            return `rotate(${rotateDeg}deg) translateY(${translateY}px)`;
+          } else {
+            const angle = Math.atan2(d.target.y - d.source.y - 85 * 2, d.target.x - d.source.x) * (180 / Math.PI);
+            const minTranslateX = -15;
+            const maxTranslateX = -5;
+            const translateX = (angle - 0) * (maxTranslateX - minTranslateX) / (90 - 0) + minTranslateX;
+            return `rotate(${90 + (90 - angle)}deg) translateX(${translateX}px) translateY(${translateY}px)`;
+          };
+        });
+
+      linkTextAndArrowUpdate
+        .transition()
+        .duration(this.duration)
+        .attr("transform", function (d:any) {
+          return "translate(" + (d.source.y + d.target.y) / 2 + "," + (d.source.x + d.target.x) / 2 + ")";
+        });
+
+      linkTextAndArrow.exit()
+        .transition()
+        .duration(this.duration)
+        .style("opacity", 0)
+        .attr("transform", "translate(" + source.y + "," + source.x + ")")
+        .remove();
+    }
+
+    createLinkTextArrow(root.links(), 1)
+    createLinkTextArrow(this[duplicateTxPairs].filter((d: any) => !d.initial), 2)
+  }
+
+  private detectMutualChildInTransactions(side: string, root: any) {
+    const duplicateTxPairs = `${side}DuplicateTxPairs` as keyof TreeComponent;
+
     const nodePairs: { source: any, target: any, initial: boolean }[] = []
     const nodeUniqueMap = new Map()
 
-    const transactionHierarchy = this[root].descendants().filter((d: any) => d.parent && !['cluster', 'txo', 'hidden'].some(keyword => d.data.txid.includes(keyword)));
-
+    const transactionHierarchy = root.descendants().filter((d: any) => d.parent && !['group', 'txo', 'hidden'].some(keyword => d.data.txid.includes(keyword)));
+    
     transactionHierarchy.forEach((d: any) => {
       const id = d.data.txid;
       if (!nodeUniqueMap.has(id)) {
@@ -808,351 +797,15 @@ export class GraphTest3Component implements OnInit {
 
           if (parentNode.children.length === 0) {
             parentNode.children = null;
-          }
-        };
-      };
-    })
-    this[duplicateTxPairs] = nodePairs;
-    // End of handling multiple parent issue
-    
-    this[tree](this[root]);
-
-    this[links] = this[root].descendants().slice(1);
-    this[nodes] = this[root].descendants();
-
-    let averageX = 0;
-    let maxHiddenY = 0;
-    const hiddenNodes = this[nodes].filter((d: any) => d.data.txid === 'hidden');
-    if (hiddenNodes.length > 0) {
-      averageX = hiddenNodes.reduce((sum: any, node: any) => sum + node.x, 0) / hiddenNodes.length;
-    };
-
-    this[nodes].forEach((d: any) => {
-      d.y = (side === 'origin' ? -1 : 1) * d.depth * 300;
-
-      if (d.data.txid === 'hidden' && Math.abs(maxHiddenY) < Math.abs(d.y)) {
-          maxHiddenY = d.y;
-      };
-    });
-
-    hiddenNodes.forEach((d: any) => {
-      d.y = maxHiddenY + (side === 'origin' ? -1 : 1) * 100;
-      d.x = averageX;
-    });
-
-    let left = this[root];
-    let right = this[root];
-
-    this[root].eachBefore((node: any) => {
-      if (node.x < left.x) left = node;
-      if (node.x > right.x) right = node;
-    });
-
-    const height = right.x - left.x + this.margin.top + this.margin.bottom;
-
-    let i = 0;
-    const transition = this.svg.transition()
-      .duration(this.duration)
-      .attr("viewBox", [-this.margin.left, left.x - this.margin.top, this.width, height])
-      .tween("resize", window.ResizeObserver ? null : () => () => this.svg.dispatch("toggle"));
-
-    const node = this[gNode].selectAll("g.node").data(this[nodes], (d: any) => d.id || (d.id = ++i));
-
-    const nodeEnter = node
-      .enter()
-      .append("g")
-      .attr('class', 'node')
-      .attr('id', (d: any) => {
-        if (d.data.txid.includes('txo')) {
-          return `node-${d.data.address}`;
-        }
-        return `node-${d.data.txid}`;
-      })
-      .attr("transform", (d: any) => `rotate(${d.x * 180 / Math.PI - 90})translate(${d.y},0)`)
-      .on('click', (event: any, d: any) => console.log(d));
-
-    const nodeUpdate = nodeEnter.merge(node)
-
-    nodeUpdate
-      .transition(transition)
-      .duration(this.duration)
-      .style("opacity", (d: any) => {
-        return d.data.txid === 'hidden' ? 0 : 1;
-      })
-      .attr('transform', function (d: any) {
-        return 'rotate(' + (d.x * 180 / Math.PI - 90) + ')translate(' + d.y + ')'; // Adjust the transformation
-      });    
-
-    const txoNodesUpdate = nodeUpdate.filter((d: any) => d.data.txid.includes('txo'));
-    txoNodesUpdate.selectAll('*').remove();
-    txoNodesUpdate
-      .append('circle')
-      .attr("class", (d: any) => {
-        return d.data.searched ? "highlighted-node txoCircle" : "txoCircle";
-      })
-      .attr('stroke', 'none')
-      .attr("stroke-opacity", "1")
-      .attr("r", 40)
-      .attr("fill", function(d: any) {
-        return d.data.txid === 'utxo' ? 'green' : 'red';
-      });
-
-    txoNodesUpdate
-      .append("text")
-      .attr('class', 'txoText')
-      .style("fill", "white")
-      .attr("dy", ".35em")
-      .attr("text-anchor", "middle")
-      .text(function(d: any) {
-        return d.data.value;
-      });
-  
-    const clusterNodesUpdate = nodeUpdate.filter((d: any) => d.data.txid.includes('cluster'));
-    clusterNodesUpdate.selectAll('*').remove();
-    clusterNodesUpdate
-      .append("rect")
-      .attr("class", (d: any) => {
-        return d.data.searched ? "highlighted-node clusterRect" : "clusterRect";
-      })
-      .style("fill", "var(--theme-bg-color)")
-      .attr("stroke-width", 1)
-      .attr("stroke", 'cyan')
-      .attr("stroke-opacity", "1")
-      .attr("x", -75)
-      .attr('y', -50)
-      .attr("width", 150)
-      .attr("height", 100)
-
-    const transactionNodesUpdate = nodeUpdate.filter((d: any) => !d.data.txid.includes('txo') && !d.data.txid.includes('cluster'));
-    transactionNodesUpdate.selectAll('*').remove();
-    transactionNodesUpdate
-      .append("rect")
-      .attr("class", (d: any) => {
-        return d.data.searched ? "highlighted-node transactionRect" : "transactionRect";
-      })
-      .attr("rx", 6)
-      .attr("ry", 6)
-      .attr("stroke-width", 3)
-      .attr("stroke-opacity", "1")
-      .attr("stroke", 'var(--bitcoin-theme')
-      .attr("width", 150) 
-      .attr("height", 200)
-      .attr("x", -75)
-      .attr('y', -100)
-      .style("fill", function(d: any) {
-        return d.parent ? "var(--content-bg-color)" : "var(--bitcoin-theme)";
-      });
-    
-    transactionNodesUpdate
-      .append("foreignObject")
-      .attr("class", "transactionText")
-      .attr("width", 150)
-      .attr("height", 200)
-      .attr("x", -75)
-      .attr('y', -100)
-      .append("xhtml:div")
-      .style("width", "100%")
-      .style("height", "100%")
-      .style("box-sizing", "border-box")
-      .style("padding", "10px")
-      .append("p")
-      .html(function(d: any) {
-        return `txid: ${d.data.txid} <br> featureA <br> featureB <br> featureC <br> featureD`;
-      })
-      .style("color", function(d: any) {
-        return d.parent ? "white" : "black";
-      });
-    
-    transactionNodesUpdate
-      .append("foreignObject")
-      .attr("class", "transactionFullScreenIcon")
-      .attr("width", 150)
-      .attr("height", 200)
-      .attr("x", -75)
-      .attr('y', -100)
-      .append("xhtml:div")
-      .style("width", "100%")
-      .style("height", "100%")
-      .style("position", "relative")
-      .append("div")
-      .style("position", "absolute")
-      .style("top", "10px") 
-      .style("right", "10px")
-      .append("i")
-      .attr("class", "fa-solid fa-up-right-and-down-left-from-center")
-      .on('click', function(d: any) {
-        const transactionDetail = document.getElementById("transaction-detail");
-        if (transactionDetail) {
-          transactionDetail.classList.add("show");
-        };
-      });
-
-    const nodeExit = node
-      .exit()
-      .transition(transition)
-      .duration(this.duration)
-      .style("opacity", 0)
-      .attr("transform", function() {
-        return "translate(" + source.y + "," + source.x + ")";
-      })
-      .remove();
-
-    const link = this[gLink].selectAll('path.link').data(this[links], (d: any) => d.id);
-
-    const linkEnter = link
-      .enter()
-      .insert("path", "g")
-      .attr('class', 'link')
-      .attr("d", (d: any) => {
-        const o = { x: source.x, y: source.y }; // Assuming source is defined
-        return d3.linkRadial().angle(o.x).radius(o.y)(d);
-      });
-
-    const linkUpdate = linkEnter.merge(link);
-
-    linkUpdate
-      .transition(transition)
-      .duration(this.duration)
-      .attr("d", (d: any) => d3.linkRadial().angle(d.x).radius(d.y)(d))
-      .attr('stroke-width', 3)
-      .attr('stroke', ((d: any) => {
-        return !d.data.txid.includes('cluster') || d.data.txid === 'hidden' ? 'var(--bitcoin-theme)' : 'white';
-      }))
-      .attr('fill', 'none');
-
-    const linkExit = link
-      .exit()
-      .transition(transition)
-      .duration(this.duration)
-      .attr("d", (d: any) => {
-        const o = { x: source.x, y: source.y };
-        return d3.linkRadial().angle(o.x).radius(o.y)(d);
-      })
-      .remove();
-
-    const manualLink = this[gLink].selectAll(".manual-link").data(this[duplicateTxPairs].filter((d: any) => !d.initial));
-
-    const manualLinkEnter = manualLink.enter()
-      .append("path")
-      .attr("class", "manual-link")
-      .attr("d", () => {
-        const pathString = `M${source.y},${source.x} H${source.y + 85} L${source.y - 85},${source.x} H${source.y}`;
-        return pathString;
-      });
-
-    const manualLinkUpdate = manualLinkEnter.merge(manualLink)
-
-    manualLinkUpdate
-      .transition(transition)
-      .duration(this.duration)
-      .attr("d", (d: any) => {
-        const source = { x: d.source.x, y: d.source.y };
-        const target = { x: d.target.x, y: d.target.y };
-        const pathString = `M${source.y},${source.x} H${source.y + 85} L${target.y - 85},${target.x} H${target.y}`;
-        return pathString;
-      })
-      .attr("stroke", "var(--bitcoin-theme)")
-      .attr("stroke-width", 1)
-      .attr("fill", "none")
-    
-    const manualLinkExit = manualLink.exit()
-      .transition(transition)
-      .duration(this.duration)
-      .attr("d", () => {
-        const pathString = `M${source.y},${source.x} H${source.y + 85} L${source.y - 85},${source.x} H${source.y}`;
-        return pathString;
-      })
-      .remove()
-
-    const createLinkTextArrow = (linkData: any, source: any, i: number) => {
-      const linkTextAndArrow = this[gLink].selectAll('.link-text-group'+i)
-        .data(linkData, (d: any) => d.target.id)
-
-      const linkTextAndArrowEnter = linkTextAndArrow.enter()
-        .append("g")
-        .attr("class", "link-text-group"+i)
-        .attr("transform", "translate(" + source.y + "," + source.x + ")")
-
-      const linkTextAndArrowUpdate = linkTextAndArrowEnter.merge(linkTextAndArrow)
-
-      linkTextAndArrowUpdate.selectAll(".link-arrow, .link-text")
-        .transition(transition)
-        .duration(this.duration)
-        .style("opacity", 0)
-        .remove();
-
-      linkTextAndArrowUpdate
-        .append("text")
-        .attr("class", "fa link-arrow")
-        .attr("dy", "0.5em")
-        .attr("text-anchor", "middle")
-        .style("fill", "white")
-        .text('\uf106')
-        .style("font-size", "22px")
-        .style("transform", (d: any) => {
-          const translateY = -30;
-          if (i === 1) {
-            let rotateDeg = 0;
-            // Left side
-            if (d.target.y < 0) {
-              if (d.source.x > d.target.x) {
-                // Head downwards
-                rotateDeg = 180;
-              } else if (d.source.x === d.target.x) {
-                // Head right
-                rotateDeg = 90;
-              };
-            } else {
-              if (d.source.x < d.target.x) {
-                // Head upwards
-                rotateDeg = 180;
-              } else if (d.source.x === d.target.x) {
-                // Head right
-                rotateDeg = 90;
-              };
-            };
-            return `rotate(${rotateDeg}deg) translateY(${translateY}px)`;
-          } else {
-            const angle = Math.atan2(d.target.y - d.source.y - 85 * 2, d.target.x - d.source.x) * (180 / Math.PI);
-            const minTranslateX = -15;
-            const maxTranslateX = -5;
-            const translateX = (angle - 0) * (maxTranslateX - minTranslateX) / (90 - 0) + minTranslateX;
-            return `rotate(${90 + (90 - angle)}deg) translateX(${translateX}px) translateY(${translateY}px)`;
           };
-        });
-
-      linkTextAndArrowUpdate
-        .transition(transition)
-        .duration(this.duration)
-        .attr("transform", function (d:any) {
-          return "translate(" + (d.source.y + d.target.y) / 2 + "," + (d.source.x + d.target.x) / 2 + ")";
-        });
-
-      linkTextAndArrow.exit()
-        .transition(transition)
-        .duration(this.duration)
-        .style("opacity", 0)
-        .attr("transform", "translate(" + source.y + "," + source.x + ")")
-        .remove();
-    }
-
-    createLinkTextArrow(this[root].links(), source, 1)
-    createLinkTextArrow(this[duplicateTxPairs].filter((d: any) => !d.initial), source, 2)
-  
-    this[nodes].forEach((d:any) => {
-        d.x0 = d.x;
-        d.y0 = d.y;
+        };
+      };
     });
+
+    this[duplicateTxPairs] = nodePairs;
   }
 
-  closeTransactionDetailPopover() {
-    const transactionDetail = document.getElementById("transaction-detail");
-    if (transactionDetail) {
-      transactionDetail.classList.remove("show");
-    };
-  }
-
-  diagonal(s:any, t:any) {
+  private diagonal(s: any, t: any) {
     // Define source and target x,y coordinates
     const x = s.y;
     const y = s.x;
@@ -1191,132 +844,314 @@ export class GraphTest3Component implements OnInit {
     `;
   }
 
-  search() {
-    const searchHierarchy = (transactions: any, found: boolean, job: boolean, count: number): [boolean, number] => {
+  public search() {
+    const searchTransactionHierarchy = (transactions: any, found: boolean, searching: boolean, count: number): [boolean, number, any[]] => {
+      const nodesFound: any[] = [];
       transactions.forEach((transaction: any) => {
-        if (!job) {
-          transaction.searched = job;
+        // Set searched field to false (reset)
+        if (!searching) {
+          transaction.searched = searching;
         } else {
-          if (searchType === 'Wallet Address' && transaction.txid.includes('txo')) {
+          if (this.searchType === 'Wallet Address' && transaction.txid.includes('txo')) {
             if (transaction.address === this.searchQuery) {
-              transaction.searched = job;
+              transaction.searched = searching;
               found = true;
               count++;
             }
           } else {
             if (transaction.txid === this.searchQuery) {
-              transaction.searched = job;
+              transaction.searched = searching;
               found = true;
               count++;
             }
           }
         }
 
+        if (this.searchType === 'Transaction' && found) {
+          nodesFound.push(transaction.txid);
+        }
+
         if (transaction.children) {
-          const [newFound, newCount] = searchHierarchy(transaction.children, found, job, 0);
+          const [newFound, newCount, newNodesFound] = searchTransactionHierarchy(transaction.children, found, searching, 0);
           if (newFound) {
             found = true;
             count += newCount
           };
         };
       });
-      return [found, count];
+      return [found, count, nodesFound];
     }
 
+    // Set every searched field to false
     const removeSearched = (nodes: any): void => {
       nodes.forEach((d: any) => {
-        if (d.data.txid.includes('cluster')) {
-          searchHierarchy(d.data.transactions, false, false, 0);
+        if (d.data.txid.includes('group')) {
+          searchTransactionHierarchy(d.data.transactions, false, false, 0);
         };
         d.data.searched = false;
       });
     };
 
+    this.showErrorMessage = false;
+    this.showSuccessMessage = false;
+    this.searchResult = [];
+
+    // Disable every node highlighting class.
+    const removeHighlighting = (gNode: any) => {
+      const shapes = ['rect', 'circle'];
+      shapes.forEach((shape: string) => {
+        gNode.selectAll(`.node ${shape}`).classed('highlighted-node', false)
+        gNode.selectAll(`.node ${shape}`).classed('highlighted-node', false)
+      });
+    };
+
+    removeHighlighting(this.gOriginNode); removeHighlighting(this.gDestNode);
+    removeSearched(this.originNodes); removeSearched(this.destNodes); 
+
     if (this.searchQuery === '') {
       this.showErrorMessage = true;
       this.searchErrorMessage = 'Field is Empty';
-      return
-    }
-
-    removeSearched(this.originNodes); removeSearched(this.destNodes);
+      return;
+    };
 
     const transactionIdRegex = /^[0-9a-fA-F]{64}$/;
-    const walletAddressRegex = /^(1|3|[13])[a-km-zA-HJ-NP-Z1-9]{25,34}$/;
+    const walletAddressRegex = /^(1|3|bc)[a-km-zA-HJ-NP-Z1-9]{25,42}$/;
 
-    this.showErrorMessage = false;
-    this.showSuccessMessage = false;
-
-    let searchType = '';
+    this.searchType = '';
 
     if (transactionIdRegex.test(this.searchQuery)) {
-      searchType = 'Transaction';
+      this.searchType = 'Transaction';
     } else if (walletAddressRegex.test(this.searchQuery)) {
-      searchType = 'Wallet Address';
+      this.searchType = 'Wallet Address';
     } else {
       this.showErrorMessage = true;
       this.searchErrorMessage = 'Please Enter a Valid Transaction ID or Address';
-      return
-    }
+      return;
+    };
 
     this.showStatusMessage = true;
     let count = 0;
 
     const searchNodes = (nodes: any) => {
       nodes.forEach((d: any) => {
-        if (d.data.txid.includes('cluster')) {
-          const [foundInCluster, newCount] = searchHierarchy(d.data.transactions, false, true, 0);
-          d.data.searched = foundInCluster;
+        if (d.data.txid.includes('group')) {
+          const [foundInGroup, newCount, nodesFound] = searchTransactionHierarchy(d.data.transactions, false, true, 0);
+          d.data.searched = foundInGroup;
           count += newCount;
-        } else if (searchType === 'Wallet Address' && d.data.txid.includes('txo')) {
+          nodesFound.forEach((node: any) => {
+            this.searchResult.push(node);
+          })
+          console.log(this.searchResult)
+        } else if (this.searchType === 'Wallet Address' && d.data.txid.includes('txo')) {
           if (d.data.address === this.searchQuery) { 
             d.data.searched = true; 
+            this.searchResult.push({d});
             count++;
           };
         } else {
           if (d.data.txid === this.searchQuery) {
             d.data.searched = true;
+            this.searchResult.push(d);
             count++;
           };
         };
       });
     };
 
-    this.searchStatusMessage = `Searching for ${searchType} in Origins`; searchNodes(this.originNodes); 
-    this.searchStatusMessage = `Searching for ${searchType} in Destinations`; searchNodes(this.destNodes)
+    this.searchStatusMessage = `Searching for ${this.searchType} in Origins`; searchNodes(this.originNodes); 
+    this.searchStatusMessage = `Searching for ${this.searchType} in Destinations`; searchNodes(this.destNodes);
 
     this.showStatusMessage = false;
 
     if (count === 0) {
       this.showErrorMessage = true;
-      this.searchErrorMessage = `No ${searchType} Found`;
+      this.searchErrorMessage = `No ${this.searchType} Found`;
     } else {
+      this.searchResult.forEach((result: any, index: number) => {
+        let id: string;
+        let info: string;
+        let isTX: boolean;
+  
+        if (result.data.txid.includes('txo')) {
+          id = result.data.address;
+          const spentString = result.data.spent ? 'Spent' : 'Unspent';
+          info = `${spentString} Output Value: ${result.data.value}, TXID From: ${result.data.from}, TXID To: ${result.data.to}`;
+          isTX = false;
+        } else {
+          id = result.data.txid;
+          info = `TXID: ${result.data.txid}`;
+          isTX = true;
+        }
+        this.searchResult[index] = { id: id, info: info, isTransaction: isTX, side: result.data.side };
+      });
+      
       this.showSuccessMessage = true;
-      if (searchType === 'Wallet Address') {
-        this.searchSuccessMessage = `Found ${count} Outputs Belonging To ${searchType}`;
-      } else {
-        this.searchSuccessMessage = `Found ${searchType}`;
-      }
 
-    this.updateTree(this.destRoot, 'dest')
+      if (this.searchType === 'Wallet Address') {
+        this.searchSuccessMessage = `Found ${count} Outputs Belonging To ${this.searchType}`;
+      } else {
+        this.searchSuccessMessage = `Found ${this.searchType}`;
+      };
+
+    console.log(this.searchResult)
+
     this.updateTree(this.originRoot, 'origin');
+    this.updateTree(this.destRoot, 'dest');
+    };
+  }
+
+  private findNearestGroup(root: any, mouseX: number, mouseY: number): any {
+    let closestNode = null;
+    let closestDistance = Number.MAX_VALUE;
+  
+    function visit(node: any) {
+      if (node.data.txid.includes('group')) {
+        const [y, x] = [node.x, node.y];
+        // Euclidean distance
+        const distance = Math.sqrt((x - mouseX) ** 2 + (y - mouseY) ** 2);
+    
+        if (distance < closestDistance) {
+          closestDistance = distance;
+          closestNode = node;
+        };
+      }
+      if (node.children) {
+        node.children.forEach(visit);
+      };
+    }
+  
+    if (root.children) {
+      root.children.forEach(visit)
+    };
+    return closestNode;
+  }
+
+  private releaseFromGroup(node: any, incrementDepth: number, parent: any, innerDepth: number, subsequentGroups: any, constantNearestNodeDepth: number, flags: any) {
+    node.depth = incrementDepth;
+    node.parent = parent;
+
+    if (node.children && node.children.length > 0) {
+      node.children.forEach((child: any) => this.releaseFromGroup(child, incrementDepth + 1, node, innerDepth, subsequentGroups, constantNearestNodeDepth, flags));
+    } else {
+      // If no children -> connect to subsequentGroups
+      if (subsequentGroups) {
+        const depth = constantNearestNodeDepth + innerDepth; // - 1
+
+        // Update subsequent nodes
+        let nextParent: any = null;
+        let previousHiddenParent: boolean = true;
+        let previousOriginalDepth = -1;
+        let previousUpdatedGroup: any;
+  
+        const subsequentGroupsClone = subsequentGroups.map((group: any, index: number) => {
+          const clonedGroup = { ...group };
+          if (index > 0 && nextParent) {
+            if (clonedGroup.depth === previousOriginalDepth) {
+              clonedGroup.parent = previousUpdatedGroup.parent;
+              clonedGroup.data.hiddenParent = previousHiddenParent;
+              clonedGroup.depth = previousUpdatedGroup.depth;
+            } else {
+              previousOriginalDepth = clonedGroup.depth;
+              clonedGroup.parent = nextParent;
+              clonedGroup.data.hiddenParent = false;
+              clonedGroup.depth = depth + index;
+            };
+          } else {
+            previousOriginalDepth = clonedGroup.depth;
+            clonedGroup.parent = nextParent;
+            clonedGroup.data.hiddenParent = previousHiddenParent;
+            clonedGroup.depth = depth + index;
+          }
+          previousUpdatedGroup = clonedGroup;
+          nextParent = clonedGroup;
+          return clonedGroup;
+        });
+
+        /*
+        const depthEnsurer = (child: any, parent: any = null) => {
+          if (parent) {
+            child.depth = parent.depth + 1;
+            child.parent = parent;
+          };
+
+          if (child.children && child.children.length > 0) {
+            child.children.forEach((c: any) => {
+                depthEnsurer(c, child)
+            });
+          } 
+        }
+
+        subsequentGroupsClone.forEach((node: any) => {
+          depthEnsurer(node);
+        });
+        */
+      
+        const hiddenNodeIndices = subsequentGroupsClone.reduce((indices: any, group: any, index: any) => {
+          if (group.data.hiddenParent === true) {
+            indices.push(index);
+          };
+          return indices;
+        }, []);
+
+        if (node.data.txid !== 'utxo') {
+          if (!flags.hiddenNodeAdded) {
+            const hiddenNodeChildren = {
+              data: {
+                txid: 'hidden',
+                children: subsequentGroupsClone
+              },
+              depth: depth - 1,
+              parent: node,
+              children: subsequentGroupsClone
+            };
+
+            for (let i in hiddenNodeIndices) {
+              subsequentGroupsClone[i].parent = hiddenNodeChildren;
+            };
+
+            node.children = [hiddenNodeChildren];
+            flags.hiddenNodeAdded = true;
+
+          } else {
+            const hiddenNodeNoChildren = {
+              data: {
+                txid: 'hidden',
+              },
+              depth: depth - 1,
+              parent: node
+            };
+            
+            node.children = [hiddenNodeNoChildren];
+          };
+        };
+      };
+    };
+    return node;
+  };
+
+  private elementOutOfViewport(element: any, remove: boolean) {
+    const rect = element.getBoundingClientRect();
+    if (remove) {
+      return (
+        rect.bottom < 0 ||
+        rect.right < 0 ||
+        rect.top > (window.innerHeight || document.documentElement.clientHeight) ||
+        rect.left > (window.innerWidth || document.documentElement.clientWidth)
+      );
+    } else {
+      return (rect.left < 100 || rect.right > (window.innerWidth || document.documentElement.clientWidth) - 100);
     }
   }
 
-  flattenHierarchy(data: any): any[] {
-    let result: any[] = [];
-  
-    function flatten(item: any) {
-      result.push(item);
-      if (item.children && Array.isArray(item.children) && item.children.length > 0) {
-        item.children.forEach(flatten);
-      }
-    }
-  
-    if (Array.isArray(data)) {
-      data.forEach(flatten);
-    } else {
-      flatten(data);
-    }
-    return result;
+  public getPath(txid: string, side: string) {
+    const root = `${side}Root` as keyof TreeComponent;
+    const url = this.router.serializeUrl(
+      this.router.createUrlTree(['/dev2/path'], { queryParams: { tx1: this[root].data.txid, tx2: txid} })
+    );
+    window.open(url, '_blank');
+  }
+
+  public returnZero() {
+    return 0
   }
 }

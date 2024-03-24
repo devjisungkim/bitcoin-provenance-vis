@@ -1,37 +1,12 @@
 import { Component, OnInit, ViewEncapsulation } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
+import { forkJoin, Observable } from 'rxjs';
 import * as d3 from 'd3';
 import { parse, stringify } from 'flatted';
 import { DataRetrievalService } from 'src/services/data-retrieval/data-retrieval.service';
 import base64Icons from '../../assets/images/icons.json';
 import { PerformanceService } from 'src/services/performance/performance.service';
-
-type TreeComponent = {
-  destTree: any;
-  destRoot: any;
-  destLinks: any;
-  destNodes: any;
-  gDest: any;
-  gDestNode: any;
-  gDestLink: any;
-  destDuplicateTxPairs: any;
-  originTree: any;
-  originRoot: any;
-  originLinks: any;
-  originNodes: any;
-  gOrigin: any;
-  gOriginNode: any;
-  gOriginLink: any;
-  originDuplicateTxPairs: any;
-  pathTree: any;
-  pathRoot: any;
-  pathLinks: any;
-  pathNodes: any;
-  gPath: any;
-  gPathNode: any;
-  gPathLink: any;
-  pathDuplicateTxPairs: any;
-};
+import { DataConversionService } from 'src/services/data-conversion/data-conversion.service';
 
 @Component({
   selector: 'app-graph-test2',
@@ -42,30 +17,13 @@ type TreeComponent = {
 export class GraphTest2Component implements OnInit {
   private svg: any;
   private g: any;
-  private gOrigin: any;
-  private originTree: any;
-  private originRoot: any;
-  private originNodes: any;
-  private originLinks: any;
-  private gOriginNode: any;
-  private gOriginLink: any;
-  private originDuplicateTxPairs: any;
-  private gDest: any;
-  private destTree: any;
-  private destRoot: any;
-  private destNodes: any;
-  private destLinks: any;
-  private gDestNode: any;
-  private gDestLink: any;
-  private destDuplicateTxPairs: any;
-  private pathTree: any;
-  private pathRoot: any;
-  private pathLinks: any;
-  private pathNodes: any;
-  private gPath: any;
-  private gPathNode: any;
-  private gPathLink: any;
-  private pathDuplicateTxPairs: any;
+  private tree: any;
+  private root: any;
+  private nodes: any;
+  private links: any;
+  private gNode: any;
+  private gLink: any;
+  private duplicateTxPairs: any;
   private margin = { top: 20, right: 90, bottom: 30, left: 90 };
   private screenWidth: any;
   private screenHeight: any;
@@ -76,7 +34,6 @@ export class GraphTest2Component implements OnInit {
   private newChildren: any;
   private zoom: any;
   private transactionNodeSize = { width: 150, height: 200 };
-  private groupClosed: string = ''
   searchQuery: string = '';
   showErrorMessage: boolean = false;
   searchErrorMessage: string = '';
@@ -93,7 +50,8 @@ export class GraphTest2Component implements OnInit {
     private router: Router,
     private route: ActivatedRoute,
     private dataRetrievalService: DataRetrievalService,
-    private performanceService: PerformanceService
+    private dataConversionService: DataConversionService,
+    //private performanceService: PerformanceService
   ) {  }
 
   ngOnInit(): void {
@@ -102,8 +60,7 @@ export class GraphTest2Component implements OnInit {
 
     this.route.params.subscribe(params => {
       this.graphLoading = true;
-
-      const type = params['type'];
+      const rootTxid = params['tx'];
 
       this.width = this.screenWidth - this.margin.left - this.margin.right;
       this.height = this.screenHeight - this.margin.top - this.margin.bottom;
@@ -125,58 +82,15 @@ export class GraphTest2Component implements OnInit {
         });
 
       this.svg.call(this.zoom)
-        .call(this.zoom.transform, d3.zoomIdentity.translate(this.width / 3, 0).scale(0.2))
+        .call(this.zoom.transform, d3.zoomIdentity.translate(this.width/3, 0).scale(0.2))
         .on("dblclick.zoom", null);
-
+      
       this.svg.on("dblclick", (event: any) => {
-        if (!this.expandedGroup) {
-          // Remove tree if not in viewport
-          const originGroup = document.getElementById("origin-group");
-          const destGroup = document.getElementById("dest-group");
-        
-          if (originGroup && this.elementOutOfViewport(originGroup, true)) {
-            this.gOrigin
-              .transition()
-              .duration(this.duration)
-              .remove();
-          } else if (!originGroup && destGroup && !this.elementOutOfViewport(destGroup, false)) {
-            this.initializeTree(null, 'origin', false)
-          }
-
-          if (destGroup && this.elementOutOfViewport(destGroup, true)) {
-            this.gDest
-              .transition()
-              .duration(this.duration)
-              .remove();
-          } else if (!destGroup && originGroup && !this.elementOutOfViewport(originGroup, false)) {
-            this.initializeTree(null, 'dest', false);
-          }
-        }
-
-        let side: string;
-        let oppositeSide: string;
-
         const currentTransform = d3.zoomTransform(this.svg.node());
         const [mouseX, mouseY] = currentTransform.invert(d3.pointer(event, this.svg.node()));
 
         if (!this.expandedGroup) {
-          side = mouseX < 0 ? 'origin' : 'dest';
-
-          const root = `${side}Root` as keyof TreeComponent;
-          const nodes = `${side}Nodes` as keyof TreeComponent;
-
-          // Remove the opposite tree while other tree is focused (purpose: to reduce the number of nodes)
-          oppositeSide = mouseX > 0 ? 'origin' : 'dest';
-          const oppositeGroup = `g${oppositeSide.charAt(0).toUpperCase() + oppositeSide.slice(1)}` as keyof TreeComponent;
-          this[oppositeGroup]
-            .transition()
-            .duration(this.duration)
-            .style("opacity", 0)
-            .remove();
-
-          this.groupClosed = oppositeSide;
-
-          const nearestNode = this.findNearestGroup(this[root], mouseX, mouseY);
+          const nearestNode = this.findNearestGroup(mouseX, mouseY);
           this.expandedGroup = parse(stringify(nearestNode));
           
           if (nearestNode.data.txid.includes('group')) {
@@ -205,19 +119,17 @@ export class GraphTest2Component implements OnInit {
               return this.releaseFromGroup(newTransaction, nearestNodeDepth, nearestNodeParent, innerDepth, subsequentGroups, nearestNodeDepth, flags);
             });
 
-            this[nodes].forEach((d: any) => {
-              if (d.data.txid.includes('txo') && !visited) {
-                if (d.data.from === nearestNodeParent.data.from && d.data.to === nearestNodeParent.data.to) {
-                  d.children.splice(nearestNodeIndex, 1, ...this.newChildren);
-                  d.data.children.splice(nearestNodeIndex, 1, ...this.newChildren);
-                  
-                  this.newChildren.forEach((newChild: any) => {
-                    newChild.parent = d;
-                  });
+            this.nodes.forEach((d: any) => {
+              if (d.data.txid === 'txo' && !visited && d.children && d.children.some((child: any) => child.data.txid === this.expandedGroup.data.txid)) {
+                d.children.splice(nearestNodeIndex, 1, ...this.newChildren);
+                d.data.children.splice(nearestNodeIndex, 1, ...this.newChildren);
+                
+                this.newChildren.forEach((newChild: any) => {
+                  newChild.parent = d;
+                });
 
-                  visited = true;
-                }
-              } else if (d.data.txid === nearestNodeParent.data.txid && !visited) {
+                visited = true;
+              } else if (d.data.txid.includes('group') && d.data.txid === nearestNodeParent.data.txid && !visited) {
                 d.children.splice(nearestNodeIndex, 1, ...this.newChildren);
                 d.data.children.splice(nearestNodeIndex, 1, ...this.newChildren);
 
@@ -230,151 +142,127 @@ export class GraphTest2Component implements OnInit {
             });
 
             setTimeout(() => {
-              this.updateTree(nearestNode, side);
+              this.updateTree(nearestNode);
             }, 0);
           }
         } else if (this.expandedGroup) {
-          side = this.expandedGroup.y < 0 ? 'origin' : 'dest';
-          oppositeSide = this.expandedGroup.y > 0 ? 'origin' : 'dest';
-          const nodes = `${side}Nodes` as keyof TreeComponent;
-
           const originalParent = this.expandedGroup.parent;
           const indexOfGroup = originalParent.children.indexOf(this.expandedGroup);
           let visited = false;
 
-          this[nodes].forEach((d: any) => {
-            if (d.data.txid.includes('txo') && !visited) {
-              if (d.data.from === originalParent.data.from && d.data.to === originalParent.data.to) {
-                this.expandedGroup.parent = d;
-                d.children.splice(indexOfGroup, this.newChildren.length, this.expandedGroup);
-                visited = true;
-              }
-            } else if (d.data.txid === originalParent.data.txid && !visited) {
+          this.nodes.forEach((d: any) => {
+            if (d.data.txid === 'txo' && !visited && d.children && d.children.some((child: any) => child.data.txid === this.expandedGroup.data.txid)) {
+              this.expandedGroup.parent = d;
+              d.children.splice(indexOfGroup, this.newChildren.length, this.expandedGroup);
+              visited = true;
+            } else if (d.data.txid.includes('group') && d.data.txid === originalParent.data.txid && !visited) {
               this.expandedGroup.parent = d;
               d.children.splice(indexOfGroup, this.newChildren.length, this.expandedGroup);
               visited = true;
             };
           });
 
-          this.groupClosed = '';
-          
           const returnNode = this.expandedGroup;
           this.expandedGroup = undefined;
 
-          this.initializeTree(null, oppositeSide, false);
-
           setTimeout(() => {
-            this.updateTree(returnNode, side);
+            this.updateTree(returnNode);
           }, 0);
         } 
       });
 
-      this.route.queryParams.subscribe(queryParams => {
-        if (type === 'path') {
-          const txid1 = queryParams['tx1'];
-          const txid2 = queryParams['tx2']
-
-          this.dataRetrievalService.requestPath(txid1, txid2).subscribe((data: any) => {
-            this.initializeTree(data['pathData'], 'path', true);
-          })
-
-        } else if (type === 'origindest'){
-          const selected_txid = queryParams['tx'];
-
-          this.dataRetrievalService.requestOriginDest(selected_txid).subscribe(async (data: any) => { 
-            await this.initializeTree(data['originData'], 'origin', true);
-            await this.initializeTree(data['destData'], 'dest', true);
-            this.graphLoading = false;
-          });
-        };
-      })
+      this.dataRetrievalService.requestTransaction(rootTxid).subscribe((res: any) => { 
+        const initialTransaction = this.dataConversionService.convertToHierarchy(res['transaction']);
+        this.initializeTree(initialTransaction);
+        this.graphLoading = false;
+      });
     });
   }     
 
-  initializeTree(data: any, side: string, firstTime: boolean) {
-    const tree = `${side}Tree` as keyof TreeComponent;
-    const root = `${side}Root` as keyof TreeComponent;
-    const g = `g${side.charAt(0).toUpperCase() + side.slice(1)}` as keyof TreeComponent;
-    const gNode = `g${side.charAt(0).toUpperCase() + side.slice(1)}Node` as keyof TreeComponent;
-    const gLink = `g${side.charAt(0).toUpperCase() + side.slice(1)}Link` as keyof TreeComponent;
+  private getTransactions(txid_list: string[]): Observable<any[]> {
+    const observables = txid_list.map(txid => {
+      return this.dataRetrievalService.requestTransaction(txid);
+    });
 
-    if (firstTime) {
-      this[root] = d3.hierarchy(data);
-      this[tree] = d3.tree()
-                    .nodeSize([this.transactionNodeSize.height, this.transactionNodeSize.width])
-                    .separation((a, b) => {
-                      return a.parent === b.parent ? 1.25 : 1.25;
-                    });
+    return forkJoin(observables);
+  }
+
+  private async addTransactionsToPath(txid_list: string[]): Promise<any[]> {
+    const transactions: any[] | undefined = await this.getTransactions(txid_list).toPromise();
+    const convertedTransactions: any[] = [];
+
+    if (transactions === undefined) {
+      throw new Error('Transactions are undefined');
     }
+  
+    transactions.forEach((transaction: any) => {
+      const converted_tx = this.dataConversionService.convertToHierarchy(transaction);
+      convertedTransactions.push(converted_tx);
+    });
+  
+    return convertedTransactions;
+  }
 
-    this[g] = this.g.append('g')
-      .attr("class", side + "-group")
-      .attr('id', side + "-group")
-      //.attr("transform", "translate(" + (this.width/2) + "," + (this.height/3) + ")");
-    
-    this[gLink] = this[g].append("g")
-      .attr('id', side + "-link-group")
+  private initializeTree(data: any) {
+    this.root = d3.hierarchy(data);
+    this.tree = d3.tree()
+                  .nodeSize([this.transactionNodeSize.height, this.transactionNodeSize.width])
+                  .separation((a, b) => {
+                    return a.parent === b.parent ? 1.25 : 1.25;
+                  });
+
+    this.gLink = this.g.append("g")
+      .attr('id', "link-group")
       .attr("cursor", "pointer")
       .attr("pointer-events", "all"); 
       
-    this[gNode] = this[g].append('g')
-      .attr('id', side + "-node-group") 
+    this.gNode = this.g.append('g')
+      .attr('id', "node-group") 
       .attr("fill", "none")
       .attr("stroke", "white")
       .attr("stroke-opacity", 0.4)
       .attr("stroke-width", 1.5);
 
-    this[root].x0 = 0;
-    this[root].y0 = 0;
+    this.root.x0 = 0;
+    this.root.y0 = 0;
 
     // Expand all nodes
-    this[root].descendants().forEach((d: any) => {
+    this.root.descendants().forEach((d: any) => {
       if (d._children) {
         d.children = d._children;
         d._children = null;
       }
     });
 
-    this.updateTree(this[root], side)
+    this.updateTree(this.root)
   }
 
-  updateTree(source: any, side: string) {
-    const tree = `${side}Tree` as keyof TreeComponent;
-    const root = `${side}Root` as keyof TreeComponent;
-    const links = `${side}Links` as keyof TreeComponent;
-    const nodes = `${side}Nodes` as keyof TreeComponent;
-    const gNode = `g${side.charAt(0).toUpperCase() + side.slice(1)}Node` as keyof TreeComponent;
-    const gLink = `g${side.charAt(0).toUpperCase() + side.slice(1)}Link` as keyof TreeComponent;
-    const duplicateTxPairs = `${side}DuplicateTxPairs` as keyof TreeComponent;
+  private updateTree(source: any) {
+    this.detectMutualChildInTransactions();
 
-    this[duplicateTxPairs] = this.detectMutualChildInTransactions(this[root]);
+    this.links = this.root.descendants().slice(1);
+    this.nodes = this.root.descendants();
 
-    this[links] = this[root].descendants().slice(1);
-    this[nodes] = this[root].descendants();
-
-    this[tree](this[root]);
+    this.tree(this.root);
 
     let averageX = 0;
     let maxHiddenY = 0;
-    const hiddenNodes = this[nodes].filter((d: any) => d.data.txid === 'hidden');
+    const hiddenNodes = this.nodes.filter((d: any) => d.data.txid === 'hidden');
     if (hiddenNodes.length > 0) {
       averageX = hiddenNodes.reduce((sum: any, node: any) => sum + node.x, 0) / hiddenNodes.length;
     };
 
-    this[nodes].forEach((d: any) => {
-      d.y = (side === 'origin' ? -1 : 1) * d.depth * 300;
-
+    this.nodes.forEach((d: any) => {
+      d.y = d.depth * -300;
       if (d.data.txid === 'hidden' && Math.abs(maxHiddenY) < Math.abs(d.y)) {
           maxHiddenY = d.y;
       };
-
-      d.data.side = side;
     });
 
     // Ensure the x y positions are correctly set in data.
-    this[nodes].forEach((parent: any) => {
+    this.nodes.forEach((parent: any) => {
       if (parent.data.txid.includes('group')) {
-        this[nodes].forEach((child: any) => {
+        this.nodes.forEach((child: any) => {
           if (child.parent && parent.data.txid === child.parent.data.txid) {
             if (parent.y !== child.parent.y) {
               child.parent.y = parent.y;
@@ -388,33 +276,33 @@ export class GraphTest2Component implements OnInit {
     })
 
     hiddenNodes.forEach((d: any) => {
-      d.y = maxHiddenY + (side === 'origin' ? -1 : 1) * 100;
+      d.y = maxHiddenY - 100;
       d.x = averageX;
     });
 
-    let left = this[root];
-    let right = this[root];
+    let left = this.root;
+    let right = this.root;
 
-    this[root].eachBefore((node: any) => {
+    this.root.eachBefore((node: any) => {
       if (node.x < left.x) left = node;
       if (node.x > right.x) right = node;
     });
 
-    this.renderNodes(source, this[gNode], this[nodes]);
-    this.renderLinks(source, this[gLink], this[links]);
-    this.renderAdditionalGraphElements(source, this[root], this[gLink], this[duplicateTxPairs]);
+    this.renderNodes(source);
+    this.renderLinks(source);
+    this.renderAdditionalGraphElements(source);
 
-    this[nodes].forEach((d:any) => {
+    this.nodes.forEach((d:any) => {
         d.x0 = d.x;
         d.y0 = d.y;
     });
   }
 
-  renderNodes(source: any, gNode: any, nodes: any) {
+  private renderNodes(source: any) {
     let id = 0;
-    const node = gNode.selectAll("g.node").data(nodes, (d: any) => d.id || (d.id = ++id));
+    const nodes = this.gNode.selectAll("g.node").data(this.nodes, (d: any) => d.id || (d.id = ++id));
 
-    const nodeEnter = node
+    const nodeEnter = nodes
       .enter()
       .append("g")
       .attr('class', 'node')
@@ -431,7 +319,7 @@ export class GraphTest2Component implements OnInit {
         console.log(d);
       });
 
-    const nodeUpdate = nodeEnter.merge(node)
+    const nodeUpdate = nodeEnter.merge(nodes)
 
     nodeUpdate
       .transition()
@@ -456,16 +344,18 @@ export class GraphTest2Component implements OnInit {
       .attr("stroke-opacity", "1")
       .attr("r", 40)
       .attr("fill", function(d: any) {
-        return d.data.txid === 'utxo' ? 'green' : 'red';
+        return d.data.stxo_count > 0 ? 'red' : 'green';
       })
 
+    /*
     txoNodesUpdate
       .append("image")
-      .attr("xlink:href", (d: any) => base64Icons[(d.data.vout_transaction_type.toLowerCase().replace(' ', '') as keyof typeof base64Icons)])
+      .attr("xlink:href", (d: any) => base64Icons[(d.data.geolocation.toLowerCase().replace(' ', '') as keyof typeof base64Icons)])
       .attr("x", -25)
       .attr("y", -25)
       .attr("width", 50)
       .attr("height", 50);
+    */
 
     txoNodesUpdate
       .append("text")
@@ -474,9 +364,8 @@ export class GraphTest2Component implements OnInit {
       .style("font-size", "12px")
       .attr("text-anchor", "middle")
       .html((d: any) => {
-        return `<tspan x="0" y="5em">Type: ${d.data.vout_transaction_type}</tspan>
-                <tspan x="0" dy="2em">Address: ${d.data.address}</tspan>
-                <tspan x="0" dy="2em">Amount: ${d.data.value} BTC</tspan>`;
+        return `<tspan x="0" y="5em">Geolocation: ${d.data.geolocation}</tspan>
+        <tspan x="0" dy="2em">Total Value:</tspan>`;
       }); 
       
     const groupNodesUpdate = nodeUpdate.filter((d: any) => d.data.txid.includes('group'));
@@ -494,6 +383,23 @@ export class GraphTest2Component implements OnInit {
       .attr('y', -50)
       .attr("width", 150)
       .attr("height", 100)
+
+    groupNodesUpdate
+      .append("text")
+      .attr("class", "sumText")
+      .style("fill", "white")
+      .style("font-size", "12px")
+      .attr("text-anchor", "middle")
+      .html((d: any) => {
+        /*
+        const txCountInGroup = d.data.txCountInGroup ? d.data.txCountInGroup : '15';
+        const fraudTxCountInGroup = d.data.fraudTxCount ? d.data.fraudTxCount : '6';
+        return `<tspan x="0">Potential Fraud TX</tspan>
+                <tspan x="0" dy="2em">${fraudTxCountInGroup} / ${txCountInGroup}</tspan>`;
+        */
+        return `<tspan x="0">Geolocation</tspan>
+                <tspan x="0" dy="2em">${d.data.geolocation}</tspan>`;
+      }); 
 
     const transactionNodesUpdate = nodeUpdate.filter((d: any) => !['txo', 'group', 'hidden'].some(keyword => d.data.txid.includes(keyword)));
     transactionNodesUpdate.selectAll('*').remove();
@@ -513,6 +419,7 @@ export class GraphTest2Component implements OnInit {
       .attr('y', -100)
       .style("fill", "var(--content-bg-color)");
     
+    /*
     transactionNodesUpdate
       .append("rect")
       .attr("class", "probaRect")
@@ -533,6 +440,7 @@ export class GraphTest2Component implements OnInit {
       })
       .style("fill", "red");
 
+    
     transactionNodesUpdate
       .append("text")
       .attr("class", "probaText")
@@ -544,6 +452,7 @@ export class GraphTest2Component implements OnInit {
       .style("fill", "white")
       .style("font-size", '40px')
       .attr("text-anchor", 'middle')
+    */
 
     transactionNodesUpdate
       .append("foreignObject")
@@ -562,7 +471,7 @@ export class GraphTest2Component implements OnInit {
         return `TXID: ${d.data.txid}`;
       })
 
-    const nodeExit = node
+    const nodeExit = nodes
       .exit()
       .transition()
       .duration(this.duration)
@@ -573,8 +482,8 @@ export class GraphTest2Component implements OnInit {
       .remove();
   }
 
-  renderLinks(source: any, gLink: any, links: any) {
-    const link = gLink.selectAll('path.link').data(links, (d: any) => d.id);
+  private renderLinks(source: any) {
+    const link = this.gLink.selectAll('path.link').data(this.links, (d: any) => d.id);
 
     const linkEnter = link
       .enter()
@@ -598,7 +507,13 @@ export class GraphTest2Component implements OnInit {
       })
       .attr('stroke-width', 1)
       .style('stroke', ((d: any) => {
-        return d.data.txid === 'utxo' ? 'white' : 'var(--bitcoin-theme';
+        if (d.parent.data.txid !== 'txo') {
+          // white if no vin has fraud proba over 0.5 else red
+          d.data.vin_list
+        } else if (['txo', 'group', 'hidden'].some(keyword => d.children[0].data.txid.includes(keyword))) {
+          // white if 
+        }
+        return 'red';
       }))
       .attr('fill', 'none');
 
@@ -616,8 +531,8 @@ export class GraphTest2Component implements OnInit {
       });
   }
 
-  renderAdditionalGraphElements(source: any, root: any, gLink: any, duplicateTxPairs: any) {
-    const manualLink = gLink.selectAll(".manual-link").data(duplicateTxPairs.filter((d: any) => !d.initial));
+  private renderAdditionalGraphElements(source: any) {
+    const manualLink = this.gLink.selectAll(".manual-link").data(this.duplicateTxPairs.filter((d: any) => !d.initial));
 
     const manualLinkEnter = manualLink.enter()
       .append("path")
@@ -652,7 +567,7 @@ export class GraphTest2Component implements OnInit {
       .remove()
 
     const createLinkTextArrow = (linkData: any, i: number) => {
-      const linkTextAndArrow = gLink.selectAll('.link-text-group'+i).data(linkData, (d: any) => d.target.id)
+      const linkTextAndArrow = this.gLink.selectAll('.link-text-group'+i).data(linkData, (d: any) => d.target.id)
 
       const linkTextAndArrowEnter = linkTextAndArrow.enter()
         .append("g")
@@ -735,16 +650,15 @@ export class GraphTest2Component implements OnInit {
         .remove();
     }
 
-    createLinkTextArrow(root.links(), 1)
-    createLinkTextArrow(duplicateTxPairs.filter((d: any) => !d.initial), 2)
-  
+    createLinkTextArrow(this.root.links(), 1)
+    createLinkTextArrow(this.duplicateTxPairs.filter((d: any) => !d.initial), 2)
   }
 
-  detectMutualChildInTransactions(root: any) {
+  private detectMutualChildInTransactions() {
     const nodePairs: { source: any, target: any, initial: boolean }[] = []
     const nodeUniqueMap = new Map()
 
-    const transactionHierarchy = root.descendants().filter((d: any) => d.parent && !['group', 'txo', 'hidden'].some(keyword => d.data.txid.includes(keyword)));
+    const transactionHierarchy = this.root.descendants().filter((d: any) => d.parent && !['group', 'txo', 'hidden'].some(keyword => d.data.txid.includes(keyword)));
     
     transactionHierarchy.forEach((d: any) => {
       const id = d.data.txid;
@@ -795,49 +709,10 @@ export class GraphTest2Component implements OnInit {
       };
     });
 
-    return nodePairs;
+    this.duplicateTxPairs = nodePairs;
   }
 
-  diagonal(s: any, t: any) {
-    // Define source and target x,y coordinates
-    const x = s.y;
-    const y = s.x;
-    const ex = t.y;
-    const ey = t.x;
-
-    // Values in case of top reversed and left reversed diagonals
-    let xrvs = ex - x < 0 ? -1 : 1;
-    let yrvs = ey - y < 0 ? -1 : 1;
-
-    // Define the preferred curve radius
-    let rdef = 35;
-
-    // Reduce curve radius if source-target x space is smaller
-    let r = Math.abs(ex - x) / 2 < rdef ? Math.abs(ex - x) / 2 : rdef;
-
-    // Further reduce curve radius if y space is smaller
-    r = Math.abs(ey - y) / 2 < r ? Math.abs(ey - y) / 2 : r;
-
-    // Define the width and height of the link, excluding the radius
-    let h = Math.abs(ey - y) / 2 - r;
-    let w = Math.abs(ex - x) / 2 - r;
-
-    // Build and return a custom arc command
-    return `
-          M ${x} ${y}
-          L ${x + w * xrvs} ${y}
-          C ${x + w * xrvs + r * xrvs} ${y}
-            ${x + w * xrvs + r * xrvs} ${y}
-            ${x + w * xrvs + r * xrvs} ${y + r * yrvs}
-          L ${x + w * xrvs + r * xrvs} ${ey - r * yrvs}
-          C ${x + w * xrvs + r * xrvs}  ${ey}
-            ${x + w * xrvs + r * xrvs}  ${ey}
-            ${ex - w * xrvs}  ${ey}
-          L ${ex} ${ey}
-    `;
-  }
-
-  search() {
+  public search() {
     const searchTransactionHierarchy = (transactions: any, found: boolean, searching: boolean, count: number): [boolean, number, any[]] => {
       const nodesFound: any[] = [];
       transactions.forEach((transaction: any) => {
@@ -898,8 +773,8 @@ export class GraphTest2Component implements OnInit {
       });
     };
 
-    removeHighlighting(this.gOriginNode); removeHighlighting(this.gDestNode);
-    removeSearched(this.originNodes); removeSearched(this.destNodes); 
+    removeHighlighting(this.gNode);
+    removeSearched(this.nodes);
 
     if (this.searchQuery === '') {
       this.showErrorMessage = true;
@@ -951,8 +826,8 @@ export class GraphTest2Component implements OnInit {
       });
     };
 
-    this.searchStatusMessage = `Searching for ${this.searchType} in Origins`; searchNodes(this.originNodes); 
-    this.searchStatusMessage = `Searching for ${this.searchType} in Destinations`; searchNodes(this.destNodes);
+    this.searchStatusMessage = `Searching for ${this.searchType}`; 
+    searchNodes(this.nodes); 
 
     this.showStatusMessage = false;
 
@@ -986,14 +861,11 @@ export class GraphTest2Component implements OnInit {
         this.searchSuccessMessage = `Found ${this.searchType}`;
       };
 
-    console.log(this.searchResult)
-
-    this.updateTree(this.originRoot, 'origin');
-    this.updateTree(this.destRoot, 'dest');
+    this.updateTree(this.root);
     };
   }
 
-  findNearestGroup(root: any, mouseX: number, mouseY: number): any {
+  private findNearestGroup(mouseX: number, mouseY: number): any {
     let closestNode = null;
     let closestDistance = Number.MAX_VALUE;
   
@@ -1013,13 +885,13 @@ export class GraphTest2Component implements OnInit {
       };
     }
   
-    if (root.children) {
-      root.children.forEach(visit)
+    if (this.root.children) {
+      this.root.children.forEach(visit)
     };
     return closestNode;
   }
 
-  releaseFromGroup(node: any, incrementDepth: number, parent: any, innerDepth: number, subsequentGroups: any, constantNearestNodeDepth: number, flags: any) {
+  private releaseFromGroup(node: any, incrementDepth: number, parent: any, innerDepth: number, subsequentGroups: any, constantNearestNodeDepth: number, flags: any) {
     node.depth = incrementDepth;
     node.parent = parent;
 
@@ -1086,7 +958,7 @@ export class GraphTest2Component implements OnInit {
           return indices;
         }, []);
 
-        if (node.data.txid !== 'utxo') {
+        if (node.data.stxo_count > 0) {
           if (!flags.hiddenNodeAdded) {
             const hiddenNodeChildren = {
               data: {
@@ -1122,21 +994,53 @@ export class GraphTest2Component implements OnInit {
     return node;
   };
 
-  elementOutOfViewport(element: any, remove: boolean) {
-    const rect = element.getBoundingClientRect();
-    if (remove) {
-      return (
-        rect.bottom < 0 ||
-        rect.right < 0 ||
-        rect.top > (window.innerHeight || document.documentElement.clientHeight) ||
-        rect.left > (window.innerWidth || document.documentElement.clientWidth)
-      );
-    } else {
-      return (rect.left < 100 || rect.right > (window.innerWidth || document.documentElement.clientWidth) - 100);
-    }
+  public getPath(txid: string) {
+    const url = this.router.serializeUrl(
+      this.router.createUrlTree(['/dev2/path'], { queryParams: { tx1: this.root.data.txid, tx2: txid} })
+    );
+    window.open(url, '_blank');
   }
 
-  returnZero() {
+  private diagonal(s: any, t: any) {
+    // Define source and target x,y coordinates
+    const x = s.y;
+    const y = s.x;
+    const ex = t.y;
+    const ey = t.x;
+
+    // Values in case of top reversed and left reversed diagonals
+    let xrvs = ex - x < 0 ? -1 : 1;
+    let yrvs = ey - y < 0 ? -1 : 1;
+
+    // Define the preferred curve radius
+    let rdef = 35;
+
+    // Reduce curve radius if source-target x space is smaller
+    let r = Math.abs(ex - x) / 2 < rdef ? Math.abs(ex - x) / 2 : rdef;
+
+    // Further reduce curve radius if y space is smaller
+    r = Math.abs(ey - y) / 2 < r ? Math.abs(ey - y) / 2 : r;
+
+    // Define the width and height of the link, excluding the radius
+    let h = Math.abs(ey - y) / 2 - r;
+    let w = Math.abs(ex - x) / 2 - r;
+
+    // Build and return a custom arc command
+    return `
+          M ${x} ${y}
+          L ${x + w * xrvs} ${y}
+          C ${x + w * xrvs + r * xrvs} ${y}
+            ${x + w * xrvs + r * xrvs} ${y}
+            ${x + w * xrvs + r * xrvs} ${y + r * yrvs}
+          L ${x + w * xrvs + r * xrvs} ${ey - r * yrvs}
+          C ${x + w * xrvs + r * xrvs}  ${ey}
+            ${x + w * xrvs + r * xrvs}  ${ey}
+            ${ex - w * xrvs}  ${ey}
+          L ${ex} ${ey}
+    `;
+  }
+
+  public returnZero() {
     return 0
   }
 }

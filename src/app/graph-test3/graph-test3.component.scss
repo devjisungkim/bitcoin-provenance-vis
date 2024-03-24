@@ -1,39 +1,12 @@
-.transaction-detail {
-    display: none;
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%) scale(0);
-    background-color: var(--content-bg-color);
-    padding: 20px;
-    width: 80%;   
-    height: 80%;
-    opacity: 0;
-    transition: transform 0.3s ease, opacity 0.3s ease;
-    box-shadow: 0px 8px 10px rgba(255, 255, 255, 0.14);
-}
-
-.transaction-detail-content {
-    background-color: var(--content-bg-color);
-    width: 100%;
-    height: 100%;
-}
-
-.transaction-detail.show {
-    display: block;
-    transform: translate(-50%, -50%) scale(1);
-    opacity: 1;
-}
-
 .legend {
     position: fixed;
     top: 20px;
-    right: 20px; /* Update left to right */
+    right: 20px;
     background-color: var(--theme-bg-color);
     padding: 10px;
     border: 1px solid #ccc;
     border-radius: 5px;
-    z-index: 1000; /* Ensure the legend is on top of other elements */
+    z-index: 1000;
 }
 
 .legend-item {
@@ -69,7 +42,7 @@
     justify-content: center;
 }
 
-.cluster-node {
+.group-node {
     width: 25px;
     height: 20px;
     background-color: var(--theme-bg-color);
@@ -129,9 +102,18 @@
     color: var(--bitcoin-theme);
 }
   
-.error-message {
-    padding: 15px;
-    margin-top: 10px;
+.message-container {
+    display: flex;
+    left: 0;
+    width: 100%;
+    background-color: black;
+    z-index: 1;
+    max-height: 200px;
+    overflow-y: auto;
+    box-sizing: border-box;
+}
+
+.error-msg {
     color: red;
 }
 
@@ -139,16 +121,35 @@
     display: flex;
     padding: 15px;
     margin-top: 10px;
-    mat-spinner circle {
-        stroke: var(--bitcoin-theme);
-    }
 }
 
-.success-message {
-    padding: 15px;
-    margin-top: 10px;
+.search-status mat-spinner circle {
+    stroke: var(--bitcoin-theme);
+}
+
+.success-msg {
     color: greenyellow;
 }
+
+.search-results {
+    display: flex;
+    flex-direction: column;
+}
+
+.search-result {
+    padding: 8px;
+    cursor: pointer;
+    border-bottom: 1px solid #ddd;
+}
+
+.search-result:last-child {
+    border-bottom: none;
+}
+
+.search-result:hover {
+    background-color: #f0f0f0;
+}
+
 
 .invalid-input {
     border: 2px solid red;
@@ -172,16 +173,27 @@
     }
 }
   
-  .highlighted-node {
+.highlighted-node {
     stroke-width: 10; /* Set the stroke width as needed */
     stroke: #ffd900;  /* Initial stroke color */
   
     /* Animation */
     animation: rotateColor 2s linear infinite;
-  }
-  
-  
-  
-  
-  
-  
+}
+
+.graph-loading-spinner {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000; 
+    background-color: var(--theme-bg-color);
+}
+
+mat-spinner circle {
+    stroke: var(--bitcoin-theme);
+}

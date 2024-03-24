@@ -13,9 +13,9 @@ const routes: Routes = [
   { path: 'graph/:txid', component: GraphComponent },
   { path: 'list', component: FraudTransactionListComponent },
   //{ path: 'detail', component: TransactionDetailComponent },
-  { path: 'dev1', component: GraphTestComponent },
-  { path: 'dev2/:type', component: GraphTest2Component },
-  { path: 'dev3', component:GraphTest3Component }
+  { path: 'dev1/:txid', component: GraphTestComponent },
+  { path: 'dev2/:txid', component: GraphTest2Component },
+  { path: 'dev3/:txid', component:GraphTest3Component }
 ];
 
 @NgModule({

@@ -9,10 +9,10 @@ import { FormBuilder, FormGroup, Validators } from '@angular/forms';
   styleUrls: ['./home.component.scss']
 })
 export class HomeComponent implements OnInit {
-  originDestForm!: FormGroup;
-  pathForm!: FormGroup;
-  originDestErrorMessage: string = '';
-  pathErrorMessage: string = '';
+  form!: FormGroup;
+  //pathForm!: FormGroup;
+  errorMessage: string = '';
+  //pathErrorMessage: string = '';
 
   constructor(
     private router: Router,
@@ -22,25 +22,28 @@ export class HomeComponent implements OnInit {
   ngOnInit(): void {
     const transactionIdRegex = /^[0-9a-fA-F]{64}$/;
 
-    this.originDestForm = this.formBuilder.group({
+    this.form = this.formBuilder.group({
       tx: ['', [Validators.required, Validators.pattern(transactionIdRegex)]]
     });
 
+    /*
     this.pathForm = this.formBuilder.group({
       tx1: ['', [Validators.required, Validators.pattern(transactionIdRegex)]],
       tx2: ['', [Validators.required, Validators.pattern(transactionIdRegex)]]
     });
+    */
   }
 
-  navigateToOriginDest() {
-    const tx = this.originDestForm.get('tx')?.value;
+  navigateToGraph() {
+    const tx = this.form.get('tx')?.value;
   
     const url = this.router.serializeUrl(
-      this.router.createUrlTree(['/dev2/origindest'], { queryParams: { tx: tx } })
+      this.router.createUrlTree([`/dev2/${tx}`])
     );
     window.open(url, '_blank');
   }
 
+  /*
   navigateToPath() {
     const tx1 = this.pathForm.get('tx1')?.value;
     const tx2 = this.pathForm.get('tx2')?.value;
@@ -50,4 +53,5 @@ export class HomeComponent implements OnInit {
     );
     window.open(url, '_blank');
   }
+  */
 }
