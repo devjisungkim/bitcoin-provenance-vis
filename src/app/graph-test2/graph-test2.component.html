@@ -2,9 +2,13 @@
   <mat-spinner></mat-spinner>
 </div>
 
+<div id="context-menu" class="context-menu">
+  <div class="menu-item" id="menu-item-1">Expand</div>
+</div>
+
 <div class="search-bar-container">
   <div class="search-container">
-    <input type="text" class="search-bar" placeholder="Locate Transaction or Address..." [(ngModel)]="searchQuery" [ngClass]="{ 'invalid-input': showErrorMessage }">
+    <input type="text" class="search-bar" placeholder="Locate Transaction or Address" [(ngModel)]="searchQuery" [ngClass]="{ 'invalid-input': showErrorMessage }">
     <button class="search-button" (click)="search()">
       <i class="fas fa-location-arrow"></i>
     </button>
@@ -23,7 +27,7 @@
       {{ searchSuccessMessage }}
       <div class="search-results">
         <div *ngFor="let result of searchResult" class="search-result">
-          {{ result.info }} <button *ngIf="result.isTransaction" class="path-button" (click)="getPath(result.id)">Get Path</button>
+          {{ result.info }}
         </div>
       </div>
     </div>

@@ -3,7 +3,6 @@ import { ActivatedRoute, Router } from '@angular/router';
 import * as d3 from 'd3';
 import { parse, stringify } from 'flatted';
 import { DataRetrievalService } from 'src/services/data-retrieval/data-retrieval.service';
-import base64Icons from '../../assets/images/icons.json';
 
 type TreeComponent = {
   destTree: any;
@@ -270,10 +269,12 @@ export class GraphTest3Component implements OnInit {
 
       this.route.queryParams.subscribe(queryParams => {
         const selected_txid = queryParams['tx'];
-        this.dataRetrievalService.requestOrigin(selected_txid).subscribe(async (data: any) => { 
+        /*
+        this.dataRetrievalService.requestTransaction(selected_txid).subscribe(async (data: any) => { 
           await this.initializeTree(data['originData'], 'origin', true);
           this.graphLoading = false;
         });
+        */
       })
     });
   }     
@@ -446,14 +447,6 @@ export class GraphTest3Component implements OnInit {
       .attr("fill", function(d: any) {
         return d.data.txid === 'utxo' ? 'green' : 'red';
       })
-
-    txoNodesUpdate
-      .append("image")
-      .attr("xlink:href", (d: any) => base64Icons[(d.data.vout_transaction_type.toLowerCase().replace(' ', '') as keyof typeof base64Icons)])
-      .attr("x", -25)
-      .attr("y", -25)
-      .attr("width", 50)
-      .attr("height", 50);
 
     txoNodesUpdate
       .append("text")

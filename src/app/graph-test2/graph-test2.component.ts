@@ -1,12 +1,13 @@
 import { Component, OnInit, ViewEncapsulation } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
-import { forkJoin, Observable } from 'rxjs';
+import { ActivatedRoute } from '@angular/router';
 import * as d3 from 'd3';
-import { parse, stringify } from 'flatted';
+import cloneDeep from 'lodash/cloneDeep';
 import { DataRetrievalService } from 'src/services/data-retrieval/data-retrieval.service';
-import base64Icons from '../../assets/images/icons.json';
 import { PerformanceService } from 'src/services/performance/performance.service';
 import { DataConversionService } from 'src/services/data-conversion/data-conversion.service';
+
+declare var require: any
+var iso3311a2 = require('../../../node_modules/iso-3166-1-alpha-2')
 
 @Component({
   selector: 'app-graph-test2',
@@ -33,7 +34,6 @@ export class GraphTest2Component implements OnInit {
   private expandedGroup: any;
   private newChildren: any;
   private zoom: any;
-  private transactionNodeSize = { width: 150, height: 200 };
   searchQuery: string = '';
   showErrorMessage: boolean = false;
   searchErrorMessage: string = '';
@@ -47,7 +47,6 @@ export class GraphTest2Component implements OnInit {
   graphLoading: boolean = false;
 
   constructor( 
-    private router: Router,
     private route: ActivatedRoute,
     private dataRetrievalService: DataRetrievalService,
     private dataConversionService: DataConversionService,
@@ -58,9 +57,9 @@ export class GraphTest2Component implements OnInit {
     this.screenWidth = window.innerWidth;
     this.screenHeight = window.innerHeight; 
 
-    this.route.params.subscribe(params => {
+    this.route.params.subscribe(async params => {
       this.graphLoading = true;
-      const rootTxid = params['tx'];
+      const rootTxid = params['txid'];
 
       this.width = this.screenWidth - this.margin.left - this.margin.right;
       this.height = this.screenHeight - this.margin.top - this.margin.bottom;
@@ -86,16 +85,29 @@ export class GraphTest2Component implements OnInit {
         .on("dblclick.zoom", null);
       
       this.svg.on("dblclick", (event: any) => {
-        const currentTransform = d3.zoomTransform(this.svg.node());
-        const [mouseX, mouseY] = currentTransform.invert(d3.pointer(event, this.svg.node()));
+        if (this.dataConversionService.groupingInitiated()) {
 
-        if (!this.expandedGroup) {
-          const nearestNode = this.findNearestGroup(mouseX, mouseY);
-          this.expandedGroup = parse(stringify(nearestNode));
+          const currentTransform = d3.zoomTransform(this.svg.node());
+          const [mouseX, mouseY] = currentTransform.invert(d3.pointer(event, this.svg.node()));
+
+          if (this.expandedGroup) {
+            const originalParent = this.expandedGroup.parent;
+            const indexOfGroup = originalParent.children.indexOf(this.expandedGroup);
+
+            this.nodes.forEach((d: any) => {
+              if (d.data.txid === originalParent.data.txid) {
+                this.expandedGroup.parent = d;
+                d.children.splice(indexOfGroup, this.newChildren.length, this.expandedGroup);
+              }
+            })
+          }
+
+          const nearestGroup = this.findNearestGroup(mouseX, mouseY);
+          this.expandedGroup = cloneDeep(nearestGroup);
           
-          if (nearestNode.data.txid.includes('group')) {
-            const transactionsInsideGroup = parse(stringify(nearestNode.data.transactions));
-            const subsequentGroups = nearestNode.children;
+          if (nearestGroup.data.txid.includes('group')) {
+            const transactionsInsideGroup = nearestGroup.data.transactions;
+            const subsequentGroups = nearestGroup.children;
 
             // calculate the depth of tree
             const getDepth = (node: any): number => {
@@ -109,104 +121,61 @@ export class GraphTest2Component implements OnInit {
             const innerDepth = getDepth({ children: transactionsInsideGroup });
             const flags = { hiddenNodeAdded: false };
 
-            const nearestNodeDepth = nearestNode.depth;
-            const nearestNodeParent = nearestNode.parent;
-            const nearestNodeIndex = nearestNode.parent.children.indexOf(nearestNode);
-            let visited = false;
+            const nearestGroupDepth = nearestGroup.depth;
+            const nearestGroupParent = nearestGroup.parent;
+            const nearestGroupIndex = nearestGroup.parent.children.indexOf(nearestGroup);
 
             this.newChildren = transactionsInsideGroup.map((transaction: any) => {
-              const newTransaction = d3.hierarchy(transaction);
-              return this.releaseFromGroup(newTransaction, nearestNodeDepth, nearestNodeParent, innerDepth, subsequentGroups, nearestNodeDepth, flags);
+              return this.releaseFromGroup(transaction, nearestGroupDepth, nearestGroupParent, innerDepth, subsequentGroups, nearestGroupDepth, flags);
             });
 
             this.nodes.forEach((d: any) => {
-              if (d.data.txid === 'txo' && !visited && d.children && d.children.some((child: any) => child.data.txid === this.expandedGroup.data.txid)) {
-                d.children.splice(nearestNodeIndex, 1, ...this.newChildren);
-                d.data.children.splice(nearestNodeIndex, 1, ...this.newChildren);
-                
+              if (d.data.txid === nearestGroupParent.data.txid) {
+                d.children.splice(nearestGroupIndex, 1, ...this.newChildren);
                 this.newChildren.forEach((newChild: any) => {
                   newChild.parent = d;
                 });
-
-                visited = true;
-              } else if (d.data.txid.includes('group') && d.data.txid === nearestNodeParent.data.txid && !visited) {
-                d.children.splice(nearestNodeIndex, 1, ...this.newChildren);
-                d.data.children.splice(nearestNodeIndex, 1, ...this.newChildren);
-
-                this.newChildren.forEach((newChild: any) => {
-                  newChild.parent = d;
-                });
-                
-                visited = true;
-              };
+              }
             });
 
             setTimeout(() => {
-              this.updateTree(nearestNode);
+              this.updateTree(nearestGroup);
             }, 0);
           }
-        } else if (this.expandedGroup) {
-          const originalParent = this.expandedGroup.parent;
-          const indexOfGroup = originalParent.children.indexOf(this.expandedGroup);
-          let visited = false;
-
-          this.nodes.forEach((d: any) => {
-            if (d.data.txid === 'txo' && !visited && d.children && d.children.some((child: any) => child.data.txid === this.expandedGroup.data.txid)) {
-              this.expandedGroup.parent = d;
-              d.children.splice(indexOfGroup, this.newChildren.length, this.expandedGroup);
-              visited = true;
-            } else if (d.data.txid.includes('group') && d.data.txid === originalParent.data.txid && !visited) {
-              this.expandedGroup.parent = d;
-              d.children.splice(indexOfGroup, this.newChildren.length, this.expandedGroup);
-              visited = true;
-            };
-          });
-
-          const returnNode = this.expandedGroup;
-          this.expandedGroup = undefined;
-
-          setTimeout(() => {
-            this.updateTree(returnNode);
-          }, 0);
-        } 
+        }
       });
 
-      this.dataRetrievalService.requestTransaction(rootTxid).subscribe((res: any) => { 
-        const initialTransaction = this.dataConversionService.convertToHierarchy(res['transaction']);
-        this.initializeTree(initialTransaction);
-        this.graphLoading = false;
-      });
+      const initialTransaction = await this.addTransactionsToPath([rootTxid]);
+      this.root = initialTransaction[0];
+      this.initializeTree();
+      this.graphLoading = false;
     });
   }     
 
-  private getTransactions(txid_list: string[]): Observable<any[]> {
-    const observables = txid_list.map(txid => {
-      return this.dataRetrievalService.requestTransaction(txid);
-    });
-
-    return forkJoin(observables);
-  }
-
-  private async addTransactionsToPath(txid_list: string[]): Promise<any[]> {
-    const transactions: any[] | undefined = await this.getTransactions(txid_list).toPromise();
+  private async addTransactionsToPath(txid_list: string[], parentTxoNode: any = null): Promise<any[]> {
+    const transactions: any[] | undefined = await this.dataRetrievalService.getTransactions(txid_list).toPromise();
     const convertedTransactions: any[] = [];
 
     if (transactions === undefined) {
       throw new Error('Transactions are undefined');
     }
   
-    transactions.forEach((transaction: any) => {
-      const converted_tx = this.dataConversionService.convertToHierarchy(transaction);
-      convertedTransactions.push(converted_tx);
-    });
-  
+    txid_list.forEach((txid, index) => {
+      const transaction = transactions[index];
+      if (transaction) {
+        const converted_tx = this.dataConversionService.convertToHierarchy(txid, transaction, parentTxoNode);
+        convertedTransactions.push(converted_tx);
+      } /*else {
+        console.error(`Transaction data missing for txid: ${txid}`);
+      }*/
+    })
+
     return convertedTransactions;
   }
 
-  private initializeTree(data: any) {
-    this.root = d3.hierarchy(data);
+  private initializeTree() {
     this.tree = d3.tree()
-                  .nodeSize([this.transactionNodeSize.height, this.transactionNodeSize.width])
+                  .nodeSize([250, 200])
                   .separation((a, b) => {
                     return a.parent === b.parent ? 1.25 : 1.25;
                   });
@@ -238,46 +207,42 @@ export class GraphTest2Component implements OnInit {
   }
 
   private updateTree(source: any) {
-    this.detectMutualChildInTransactions();
-
     this.links = this.root.descendants().slice(1);
     this.nodes = this.root.descendants();
 
     this.tree(this.root);
 
-    let averageX = 0;
-    let maxHiddenY = 0;
-    const hiddenNodes = this.nodes.filter((d: any) => d.data.txid === 'hidden');
-    if (hiddenNodes.length > 0) {
-      averageX = hiddenNodes.reduce((sum: any, node: any) => sum + node.x, 0) / hiddenNodes.length;
-    };
+    this.detectMutualChildInTransactions();
 
     this.nodes.forEach((d: any) => {
-      d.y = d.depth * -300;
-      if (d.data.txid === 'hidden' && Math.abs(maxHiddenY) < Math.abs(d.y)) {
-          maxHiddenY = d.y;
-      };
-    });
-
-    // Ensure the x y positions are correctly set in data.
-    this.nodes.forEach((parent: any) => {
-      if (parent.data.txid.includes('group')) {
-        this.nodes.forEach((child: any) => {
-          if (child.parent && parent.data.txid === child.parent.data.txid) {
-            if (parent.y !== child.parent.y) {
-              child.parent.y = parent.y;
-            }
-            if (parent.x !== child.parent.x) {
-              child.parent.x = parent.x;
-            }
-          }
-        })
+      // Depth Ensurer
+      if (d.parent && (d.depth - d.parent.depth) !== 1) {
+        d.depth = d.parent.depth + 1;
       }
     })
 
-    hiddenNodes.forEach((d: any) => {
-      d.y = maxHiddenY - 100;
-      d.x = averageX;
+    let hiddenAverageX = 0;
+    let hiddenMaxDepth = 0;
+    const hiddenNodes = this.nodes.filter((d: any) => d.data.txid === 'hidden');
+    if (hiddenNodes.length > 0) {
+      hiddenAverageX = hiddenNodes.reduce((sum: any, node: any) => sum + node.x, 0) / hiddenNodes.length;
+      hiddenMaxDepth = hiddenNodes.reduce((maxDepth: number, node: any) => Math.max(maxDepth, node.depth), Number.MIN_SAFE_INTEGER);
+    };
+
+    this.nodes.forEach((d: any) => {
+      if (d.data.txid === 'hidden') {
+        d.depth = hiddenMaxDepth;
+        d.x = hiddenAverageX;
+      }
+      if (d.parent && d.parent.data.txid === 'hidden') {
+        d.depth = d.parent.depth + 1;
+      }
+      d.y = d.depth * -300;
+      /*
+      if (d.data.type === 'vout') {
+        d.y = d.parent.y + 300;
+      }
+      */
     });
 
     let left = this.root;
@@ -288,8 +253,8 @@ export class GraphTest2Component implements OnInit {
       if (node.x > right.x) right = node;
     });
 
-    this.renderNodes(source);
     this.renderLinks(source);
+    this.renderNodes(source);
     this.renderAdditionalGraphElements(source);
 
     this.nodes.forEach((d:any) => {
@@ -298,27 +263,59 @@ export class GraphTest2Component implements OnInit {
     });
   }
 
+  private checkForGrouping(updatingNode: any) {
+    if (this.dataConversionService.groupingInitiated()) {
+      this.nodes.forEach((d: any) => {
+        if ((d.data.txid.includes('group') || d.parent.data.txid === this.root.data.txid) && d.children) {
+          const nonGroupChildren = d.children.filter((child: any) => !child.data.txid.includes('group'));
+          if (nonGroupChildren.length > 0) {
+            const newGroupNode = this.dataConversionService.createGroupHierarchy(nonGroupChildren, d.data.txid, d.children[0].data.geolocation, d);
+            const index = d.children.findIndex((child: any) => !child.data.txid.includes('group'));
+            d.children.splice(index, nonGroupChildren.length, newGroupNode);
+          }
+        }
+      });
+    } else {
+      if (this.dataConversionService.getTotalNumTransactionsRetrieved() > this.dataConversionService.getThreshold()) {
+        this.root.children.forEach((d: any, index: number) => {
+          if (d.children) {
+            d.children = this.dataConversionService.createGroupHierarchy(d.children, index+1, d.data.geolocation, d);
+          }
+        })
+        this.updateTree(this.root);
+        return;
+      }
+    }
+    this.updateTree(updatingNode)
+  }
+
   private renderNodes(source: any) {
-    let id = 0;
-    const nodes = this.gNode.selectAll("g.node").data(this.nodes, (d: any) => d.id || (d.id = ++id));
+    const contextMenu = d3.select("#context-menu");
+
+    const nodes = this.gNode.selectAll("g.node").data(this.nodes, (d: any) => d.id || (d.id = d.data.txid));
 
     const nodeEnter = nodes
       .enter()
       .append("g")
       .attr('class', 'node')
-      .attr('id', (d: any) => {
-        if (d.data.txid.includes('txo')) {
-          return `node-${d.data.address}`;
-        }
-        return `node-${d.data.txid}`;
-      })
+      .attr('id', (d: any) => `node-${d.data.txid}`)
       .attr("transform", function() {
         return "translate(" + source.y + "," + source.x + ")";
       })
       .on('click', (event: any, d: any) => {
         console.log(d);
+      })
+      .on("mouseenter", (event: any, d: any) => {
+        this.mouseenterHighlight(event, d);
+      })
+      .on("mouseleave", (event: any, d: any) => {
+        this.mouseleaveHighlight(event, d);
       });
-
+    
+    d3.select("body").on("click", () => {
+      contextMenu.style("display", "none");
+    });
+    
     const nodeUpdate = nodeEnter.merge(nodes)
 
     nodeUpdate
@@ -331,11 +328,46 @@ export class GraphTest2Component implements OnInit {
         return 'translate(' +  d.y + ',' + d.x + ')';
       });
 
-    nodeUpdate.filter((d: any) => d.data.txid === 'hidden' && !d.data.children).remove();
+    nodeEnter.filter((d: any) => d.data.txid === 'hidden' && !d.data.children).remove();
 
-    const txoNodesUpdate = nodeUpdate.filter((d: any) => d.data.txid.includes('txo'));
-    txoNodesUpdate.selectAll('*').remove();
-    txoNodesUpdate
+    const txoNodesEnter= nodeEnter.filter((d: any) => d.data.txid.includes('txo'));
+
+    txoNodesEnter
+      .on("contextmenu", (event: any, d: any) => {
+        event.preventDefault();
+
+        if (!d.children && d.data.type === 'vin') {
+          contextMenu.style("display", "block").style("left", event.pageX + "px").style("top", event.pageY + "px");
+
+          contextMenu.select(".menu-item").on("click", async () => {
+            d3.selectAll(`.loader-${d.data.txid} .loader`).style("display", "block");
+
+            const transactionsRetrieved = await this.addTransactionsToPath(d.data.vinTxids, d);
+
+            await new Promise(f => setTimeout(f, 100));
+
+            await Promise.all(transactionsRetrieved.map(async (transaction: any) => {
+              transaction.parent = d;
+              transaction.depth = d.depth + 1;
+      
+              await Promise.all(transaction.children.map(async (output: any) => {
+                  output.parent = transaction;
+                  output.depth = transaction.depth + 1;
+              }));
+            }));
+
+            d.children = transactionsRetrieved;
+
+            contextMenu.style("display", "none");
+            d3.selectAll(`.loader-${d.data.txid} .loader`).style("display", "none");
+
+            this.tree(this.root)
+            this.checkForGrouping(d);
+          });
+        }
+      })
+
+    txoNodesEnter
       .append('circle')
       .attr("class", (d: any) => {
         return d.data.searched ? "highlighted-node txoCircle" : "txoCircle";
@@ -344,66 +376,55 @@ export class GraphTest2Component implements OnInit {
       .attr("stroke-opacity", "1")
       .attr("r", 40)
       .attr("fill", function(d: any) {
-        return d.data.stxo_count > 0 ? 'red' : 'green';
+        return d.data.type === 'vin' ? 'red' : 'green';
       })
 
-    /*
-    txoNodesUpdate
-      .append("image")
-      .attr("xlink:href", (d: any) => base64Icons[(d.data.geolocation.toLowerCase().replace(' ', '') as keyof typeof base64Icons)])
-      .attr("x", -25)
-      .attr("y", -25)
-      .attr("width", 50)
-      .attr("height", 50);
-    */
+    txoNodesEnter
+      .append('rect')
+      .attr('class', 'safeClickBox')
+      .attr("width", 220) 
+      .attr("height", 125)
+      .attr("x", -110)
+      .attr('y', -40)
+      .attr("stroke", "none")
+      .attr('fill', 'none')
 
-    txoNodesUpdate
+    txoNodesEnter
+      .append('image')
+      .attr('xlink:href', (d: any) => {
+        return `../../assets/flag_svg/${d.data.geolocation.toLowerCase()}.svg`;
+      })
+      .attr('x', -30)
+      .attr('y', -20)
+      .attr('width', 60)
+      .attr('height', 40)
+
+    txoNodesEnter
       .append("text")
       .attr('class', 'txoAddress')
       .style("fill", "white")
       .style("font-size", "12px")
       .attr("text-anchor", "middle")
       .html((d: any) => {
-        return `<tspan x="0" y="5em">Geolocation: ${d.data.geolocation}</tspan>
-        <tspan x="0" dy="2em">Total Value:</tspan>`;
+        return `<tspan x="0" y="5em">Total Inputs: ${d.data.numInputs}</tspan>
+        <tspan x="0" dy="2em">Total Value: ${d.data.totalValue} BTC</tspan>`;
       }); 
+    
+    txoNodesEnter
+      .filter((d: any) => !d.children)
+      .append('foreignObject')
+      .attr('class', (d: any) => `loader-${d.data.txid}`)
+      .attr('x', -150)
+      .attr('y', -30)
+      .attr('width', 100)
+      .attr('height', 100)
+      .append('xhtml:div')
+      .attr('class', 'loader')
+      .style('display', 'none');
+
+    const transactionNodesEnter = nodeEnter.filter((d: any) => !['txo', 'group', 'hidden'].some(keyword => d.data.txid.includes(keyword)));
       
-    const groupNodesUpdate = nodeUpdate.filter((d: any) => d.data.txid.includes('group'));
-    groupNodesUpdate.selectAll('*').remove();
-    groupNodesUpdate
-      .append("rect")
-      .attr("class", (d: any) => {
-        return d.data.searched ? "highlighted-node groupRect" : "groupRect";
-      })
-      .style("fill", "var(--theme-bg-color)")
-      .attr("stroke-width", 1)
-      .attr("stroke", 'cyan')
-      .attr("stroke-opacity", "1")
-      .attr("x", -75)
-      .attr('y', -50)
-      .attr("width", 150)
-      .attr("height", 100)
-
-    groupNodesUpdate
-      .append("text")
-      .attr("class", "sumText")
-      .style("fill", "white")
-      .style("font-size", "12px")
-      .attr("text-anchor", "middle")
-      .html((d: any) => {
-        /*
-        const txCountInGroup = d.data.txCountInGroup ? d.data.txCountInGroup : '15';
-        const fraudTxCountInGroup = d.data.fraudTxCount ? d.data.fraudTxCount : '6';
-        return `<tspan x="0">Potential Fraud TX</tspan>
-                <tspan x="0" dy="2em">${fraudTxCountInGroup} / ${txCountInGroup}</tspan>`;
-        */
-        return `<tspan x="0">Geolocation</tspan>
-                <tspan x="0" dy="2em">${d.data.geolocation}</tspan>`;
-      }); 
-
-    const transactionNodesUpdate = nodeUpdate.filter((d: any) => !['txo', 'group', 'hidden'].some(keyword => d.data.txid.includes(keyword)));
-    transactionNodesUpdate.selectAll('*').remove();
-    transactionNodesUpdate
+    transactionNodesEnter
       .append("rect")
       .attr("class", (d: any) => {
         return d.data.searched ? "highlighted-node transactionRect" : "transactionRect";
@@ -418,43 +439,8 @@ export class GraphTest2Component implements OnInit {
       .attr("x", -75)
       .attr('y', -100)
       .style("fill", "var(--content-bg-color)");
-    
-    /*
-    transactionNodesUpdate
-      .append("rect")
-      .attr("class", "probaRect")
-      .attr("rx", 6)
-      .attr("ry", 6)
-      .attr("stroke", 'none')
-      .attr("width", 150)
-      .attr("height", (d: any) => {
-        const parentHeight = 200;
-        return Math.round(parentHeight * d.data.fraud_proba);
-      })
-      .attr("x", -75)
-      .attr("y", (d: any) => {
-        const parentHeight = 200;
-        const height = Math.round(parentHeight * d.data.fraud_proba || 0);
-        const yOffset = parentHeight - height
-        return -100 + yOffset;
-      })
-      .style("fill", "red");
 
-    
-    transactionNodesUpdate
-      .append("text")
-      .attr("class", "probaText")
-      .attr("x", 0)
-      .attr('y', 0)
-      .text((d: any) => {
-        return d.data.fraud_proba ? `${Math.round(d.data.fraud_proba * 100)}%` : 'Unknown';
-      })
-      .style("fill", "white")
-      .style("font-size", '40px')
-      .attr("text-anchor", 'middle')
-    */
-
-    transactionNodesUpdate
+    transactionNodesEnter
       .append("foreignObject")
       .attr("class", "txidText")
       .attr("width", 215)
@@ -471,6 +457,33 @@ export class GraphTest2Component implements OnInit {
         return `TXID: ${d.data.txid}`;
       })
 
+    const groupNodesEnter = nodeEnter.filter((d: any) => d.data.txid.includes('group'));
+
+    groupNodesEnter
+      .append("rect")
+      .attr("class", (d: any) => {
+        return d.data.searched ? "highlighted-node groupRect" : "groupRect";
+      })
+      .style("fill", "var(--theme-bg-color)")
+      .attr("stroke-width", 1)
+      .attr("stroke", 'cyan')
+      .attr("stroke-opacity", "1")
+      .attr("x", -75)
+      .attr('y', -50)
+      .attr("width", 150)
+      .attr("height", 100)
+
+    groupNodesEnter
+      .append("text")
+      .attr("class", "sumText")
+      .style("fill", "white")
+      .style("font-size", "12px")
+      .attr("text-anchor", "middle")
+      .html((d: any) => {
+        return `<tspan x="0">Geolocation</tspan>
+                <tspan x="0" dy="2em">${d.data.startingGeolocation}</tspan>`;
+      }); 
+
     const nodeExit = nodes
       .exit()
       .transition()
@@ -480,6 +493,77 @@ export class GraphTest2Component implements OnInit {
         return "translate(" + source.y + "," + source.x + ")";
       })
       .remove();
+  }
+
+  private mouseenterHighlight(event: any, d: any) {
+    function findAncestors(node: any) {
+      const ancestors = [];
+      let current = node;
+      while (current.parent) {
+          ancestors.push(current.parent);
+          current = current.parent;
+      }
+      return ancestors;
+    }
+
+    const descendants = d.descendants();
+    const ancestors = findAncestors(d);
+
+    this.gNode.selectAll('g.node').style("opacity", (node: any) => {
+      return descendants.includes(node) || ancestors.includes(node) ? 1 : 0.3;
+    });
+    this.gLink.selectAll('path.link').style("opacity", (link: any) => {
+      return descendants.includes(link.parent) || ancestors.includes(link) || 
+      (d.parent === link.parent && d === link) ? 1 : 0.3;
+    });
+    this.gLink.selectAll('.link-text-group1').style("opacity", (link: any) => {
+      return descendants.includes(link.source) || ancestors.includes(link.target) ||
+      (d.parent === link.source && d === link.target) ? 1 : 0.3;
+    });
+
+    if (['txo', 'group'].some(keyword => d.data.txid.includes(keyword))) {
+      const nodeInfoBox = this.gNode.selectAll(`#node-${d.data.txid}`)
+        .raise()
+        .append("foreignObject")
+        .attr("class", "node-info-box")
+        .attr("id", "node-info-box")
+        .attr("width", 600)
+        .attr("height", 300)
+        .attr("x", -300)
+        .attr("y", -300)
+        .append("xhtml:div")
+        .attr("width", "100%")
+        .attr("height", "100%")
+        .style("color", "black")
+        .style("background-color", "white")
+        .style("border-radius", "10px");
+
+      const table = nodeInfoBox.append("xhtml:table")
+        .attr("width", "100%")
+        .attr("height", "100%")
+      const tbody = table.append("xhtml:tbody");
+
+      for (const [key, value] of Object.entries(d.data.displayData)) {
+        const row = tbody.append("xhtml:tr");
+        row.append("xhtml:td")
+          .style('text-align', 'right')
+          .style("font-weight", "bold")
+          .style("padding-left", '10px')
+          .style("padding-right", "10px")
+          .text(key);
+        row.append("xhtml:td")
+          .style("padding-left", "10px")
+          .style("padding-right", "10px")
+          .text(value);
+      }
+    }
+  }
+
+  private mouseleaveHighlight(event: any, d: any) {
+    this.gNode.selectAll('g.node').style("opacity", 1);
+    this.gLink.selectAll('path.link').style("opacity", 1);
+    this.gLink.selectAll('.link-text-group1').style("opacity", 1);
+    d3.select("#node-info-box").remove();
   }
 
   private renderLinks(source: any) {
@@ -505,17 +589,21 @@ export class GraphTest2Component implements OnInit {
       .attr("d", (d: any) => {
         return this.diagonal(d.parent, d); 
       })
-      .attr('stroke-width', 1)
-      .style('stroke', ((d: any) => {
-        if (d.parent.data.txid !== 'txo') {
-          // white if no vin has fraud proba over 0.5 else red
-          d.data.vin_list
-        } else if (['txo', 'group', 'hidden'].some(keyword => d.children[0].data.txid.includes(keyword))) {
-          // white if 
+      .attr('stroke-width', (d: any) => {
+        let txoNode = undefined;
+        if (d.data.txid.includes('txo')) {
+          txoNode = d;
         }
-        return 'red';
+        return txoNode && txoNode.data.maxFraudProba > 50 ? 3 : 1;
+      })
+      .style('stroke', ((d: any) => {
+        let txoNode = undefined;
+        if (d.data.txid.includes('txo')) {
+          txoNode = d;
+        }
+        return txoNode && txoNode.data.maxFraudProba > 50 ? 'red' : 'white';
       }))
-      .attr('fill', 'none');
+      .attr('fill', 'none')
 
     const linkExit = link
       .exit()
@@ -595,7 +683,6 @@ export class GraphTest2Component implements OnInit {
         })
 
       linkTextAndArrowUpdate
-        .filter((d: any) => d.source.children.length === 1 && d.target.data.txid !== 'hidden')
         .append("text")
         .attr("class", "fa link-arrow")
         .attr("dy", "0.5em")
@@ -869,8 +956,8 @@ export class GraphTest2Component implements OnInit {
     let closestNode = null;
     let closestDistance = Number.MAX_VALUE;
   
-    function visit(node: any) {
-      if (node.data.txid.includes('group')) {
+    const calculateDistance = (node: any) => {
+      if (this.expandedGroup?.data.txid !== node.data.txid && node.data.txid.includes('group')) {
         const [y, x] = [node.x, node.y];
         // Euclidean distance
         const distance = Math.sqrt((x - mouseX) ** 2 + (y - mouseY) ** 2);
@@ -881,12 +968,12 @@ export class GraphTest2Component implements OnInit {
         };
       }
       if (node.children) {
-        node.children.forEach(visit);
+        node.children.forEach(calculateDistance);
       };
     }
   
     if (this.root.children) {
-      this.root.children.forEach(visit)
+      this.root.children.forEach(calculateDistance)
     };
     return closestNode;
   }
@@ -900,15 +987,15 @@ export class GraphTest2Component implements OnInit {
     } else {
       // If no children -> connect to subsequentGroups
       if (subsequentGroups) {
-        const depth = constantNearestNodeDepth + innerDepth; // - 1
+        const depth: number = constantNearestNodeDepth + innerDepth; // - 1
 
         // Update subsequent nodes
         let nextParent: any = null;
         let previousHiddenParent: boolean = true;
-        let previousOriginalDepth = -1;
+        let previousOriginalDepth: number = -1;
         let previousUpdatedGroup: any;
   
-        const subsequentGroupsClone = subsequentGroups.map((group: any, index: number) => {
+        subsequentGroups.map((group: any, index: number) => {
           const clonedGroup = { ...group };
           if (index > 0 && nextParent) {
             if (clonedGroup.depth === previousOriginalDepth) {
@@ -932,74 +1019,39 @@ export class GraphTest2Component implements OnInit {
           return clonedGroup;
         });
 
-        /*
-        const depthEnsurer = (child: any, parent: any = null) => {
-          if (parent) {
-            child.depth = parent.depth + 1;
-            child.parent = parent;
-          };
-
-          if (child.children && child.children.length > 0) {
-            child.children.forEach((c: any) => {
-                depthEnsurer(c, child)
-            });
-          } 
-        }
-
-        subsequentGroupsClone.forEach((node: any) => {
-          depthEnsurer(node);
-        });
-        */
-      
-        const hiddenNodeIndices = subsequentGroupsClone.reduce((indices: any, group: any, index: any) => {
+        const hiddenNodeIndices: number[] = subsequentGroups.reduce((indices: number[], group: any, index: number) => {
           if (group.data.hiddenParent === true) {
             indices.push(index);
-          };
+          }
           return indices;
         }, []);
+      
 
-        if (node.data.stxo_count > 0) {
-          if (!flags.hiddenNodeAdded) {
-            const hiddenNodeChildren = {
-              data: {
-                txid: 'hidden',
-                children: subsequentGroupsClone
-              },
-              depth: depth - 1,
-              parent: node,
-              children: subsequentGroupsClone
-            };
+        const hiddenNode = d3.hierarchy({
+          txid: 'hidden'
+        });
 
-            for (let i in hiddenNodeIndices) {
-              subsequentGroupsClone[i].parent = hiddenNodeChildren;
-            };
+        if (node.data.vinTxids.length > 0 && !flags.hiddenNodeAdded) {
+          hiddenNode.parent = node;
+          hiddenNode.children = subsequentGroups;
+          //hiddenNode.depth = depth - 1;
 
-            node.children = [hiddenNodeChildren];
-            flags.hiddenNodeAdded = true;
-
-          } else {
-            const hiddenNodeNoChildren = {
-              data: {
-                txid: 'hidden',
-              },
-              depth: depth - 1,
-              parent: node
-            };
-            
-            node.children = [hiddenNodeNoChildren];
+          for (let i in hiddenNodeIndices) {
+            subsequentGroups[i].parent = hiddenNode;
           };
+
+          node.children = [hiddenNode];
+          flags.hiddenNodeAdded = true;
+        } else {
+          hiddenNode.parent = node;
+          //hiddenNode.depth = depth - 1;
+        
+          node.children = [hiddenNode];
         };
       };
     };
     return node;
   };
-
-  public getPath(txid: string) {
-    const url = this.router.serializeUrl(
-      this.router.createUrlTree(['/dev2/path'], { queryParams: { tx1: this.root.data.txid, tx2: txid} })
-    );
-    window.open(url, '_blank');
-  }
 
   private diagonal(s: any, t: any) {
     // Define source and target x,y coordinates
