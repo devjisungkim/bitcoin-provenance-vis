@@ -7,28 +7,34 @@ import { Observable, forkJoin, map } from 'rxjs';
 })
 export class DataRetrievalService {
 
-  url: string = 'http://localhost:5000/api/';
+  //url: string = 'http://localhost:5000/api/';
+  url: string = 'https://doe-good-formally.ngrok-free.app/';
+
+  headers = new HttpHeaders({
+    'ngrok-skip-browser-warning': 'skip',
+    'Access-Control-Allow-Origin': '*',
+  });
 
   constructor(
     private http: HttpClient
     ) {  }
 
   private requestTransaction(txid: string): Observable<any> {
-    const headers = new HttpHeaders({
-      'ngrok-skip-browser-warning': 'skip'
-    });
-    
-    const jsonURL = `${this.url}getTransaction/${txid}`;
-    return this.http.get(jsonURL, {headers: headers, params: {txid: txid}})
+    const jsonURL = `${this.url}get_transaction`;
+    return this.http.get(jsonURL, { headers: this.headers, params: { transaction_id: txid } })
   }
 
   public getTransactions(txid_list: string[]): Observable<any[]> {
     const observables = txid_list.map(txid => {
       return this.requestTransaction(txid).pipe(
-        map((response: any) => response.transaction)
+        map((response: any) => response)
       );
     });
-
     return forkJoin(observables);
+  }
+
+  public getSuspiciousTransactions(): Observable<any> {
+    const jsonURL = `${this.url}get_alert_data`;
+    return this.http.get(jsonURL, { headers: this.headers })
   }
 }

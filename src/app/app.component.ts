@@ -26,7 +26,7 @@ export class AppComponent implements OnInit {
   }
 
   navigateToList() {
-    this.router.navigate(['/list']);
-    this.currentPageName = 'list';
+    this.router.navigate(['/suspiciousTransactions']);
+    this.currentPageName = 'suspiciousTransactions';
   }
 }

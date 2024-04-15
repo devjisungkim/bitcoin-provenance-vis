@@ -31,8 +31,7 @@
     "iso-3166-1-alpha-2": "^1.0.1",
     "lodash": "^4.17.21",
     "mdb-angular-ui-kit": "^5.0.0",
-    "ml-hclust": "^3.1.0",
-    "ml-kmeans": "^6.0.0",
+    "ngx-skeleton-loader": "^6.0.0",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0",
     "zone.js": "~0.13.0"

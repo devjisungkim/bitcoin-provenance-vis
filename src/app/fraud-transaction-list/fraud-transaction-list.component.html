@@ -1,35 +1,53 @@
 <div class="container-fluid">
-    <div class="container">
-        <div class="d-flex justify-content-between align-items-center py-5">
-            <h2 class="h5 mb-0">Potential Fraudulent Transactions Detected</h2>
+  <div class="container">
+      <div class="d-flex justify-content-between align-items-center py-5">
+          <h2 class="h5 mb-0">Potential Fraudulent Transactions Detected</h2>
+      </div>
+      <div class="list list-row card">
+          <ngx-skeleton-loader *ngIf="isLoading" count="5" animation="progress" [theme]="{'background-color': 'var(--content-bg-color)', 'opacity': '0.5', 'border-radius': '0', height: '60px'}"></ngx-skeleton-loader>
+          <div class="row" *ngIf="!isLoading">
+              <div class="col-md-6">
+                  <div *ngFor="let txid of paginatedSusTransactionList.slice(0, midpoint)" class="list-item">
+                      <div><a><span class="w-40 avatar gd-danger text-sm">100%</span></a></div>
+                      <div class="flex">
+                          <a class="item-author text-color" id="tx-id">{{ txid }}</a>
+                          <div (click)="navigateToGraph(txid)" class="view-button item-except text-muted text-sm h-1x">View Provenance</div>
+                      </div>
+                  </div>
+              </div>
+              <div class="col-md-6">
+                  <div *ngFor="let txid of paginatedSusTransactionList.slice(midpoint)" class="list-item">
+                      <div><a><span class="w-40 avatar gd-danger text-sm">100%</span></a></div>
+                      <div class="flex">
+                          <a class="item-author text-color" id="tx-id">{{ txid }}</a>
+                          <div (click)="navigateToGraph(txid)" class="view-button item-except text-muted text-sm h-1x">View Provenance</div>
+                      </div>
+                  </div>
+              </div>
+          </div>
+      </div>
+      <div class="row justify-content-center">
+        <div class="col-md-12 d-flex justify-content-center">
+          <nav *ngIf="totalPages > 1">
+            <ul class="pagination">
+              <li class="page-item" [ngClass]="{ 'disabled': currentPage === 1 }">
+                <a class="page-link" (click)="goToPage(1)">&laquo;</a>
+              </li>
+              <li class="page-item" [ngClass]="{ 'disabled': currentPage === 1 }">
+                <a class="page-link" (click)="goToPage(currentPage - 1)">&lt;</a>
+              </li>
+              <li class="page-item" *ngFor="let page of visiblePages" [ngClass]="{ 'active': page === currentPage }">
+                <a class="page-link" (click)="goToPage(page)">{{ page }}</a>
+              </li>
+              <li class="page-item" [ngClass]="{ 'disabled': currentPage === totalPages }">
+                <a class="page-link" (click)="goToPage(currentPage + 1)">&gt;</a>
+              </li>
+              <li class="page-item" [ngClass]="{ 'disabled': currentPage === totalPages }">
+                <a class="page-link" (click)="goToPage(totalPages)">&raquo;</a>
+              </li>
+            </ul>
+          </nav>
         </div>
-        <div class="list list-row card">
-            <div class="row">
-                <div class="col-md-6">
-                    <div *ngFor="let txID of fraudList" class="list-item">
-                        <div><a><span class="w-40 avatar gd-danger text-sm">100%</span></a></div>
-                        <div class="flex"><a class="item-author text-color" id="tx-id">{{ txID }}</a>
-                            <div class="item-except text-muted text-sm h-1x">Track: <span (click)="navigateToGraph(txID)">Origins</span><span (click)="navigateToGraph(txID)">Destinations</span></div>
-                        </div>
-                        <div class="no-wrap">
-                            <div class="item-date text-sm d-none d-md-block">an hour ago</div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-6">
-                    <!--
-                    <div *ngFor="let txID of fraudList" class="list-item">
-                        <div><a><span class="w-40 avatar gd-danger text-sm">100%</span></a></div>
-                        <div class="flex"><a class="item-author text-color" id="tx-id">{{ txID }}</a>
-                            <div class="item-except text-muted text-sm h-1x">Track: <span (click)="navigateToGraph(txID)">Origins</span><span (click)="navigateToGraph(txID)">Destinations</span></div>
-                        </div>
-                        <div class="no-wrap">
-                            <div class="item-date text-sm d-none d-md-block">an hour ago</div>
-                        </div>
-                    </div>
-                    -->
-                </div>
-            </div>
-        </div>
-    </div>
+      </div>
+  </div>
 </div>

@@ -184,6 +184,13 @@ export class GraphTest2Component implements OnInit {
       */
     });
 
+    this.nodes.forEach((d: any) => {
+      if (d.children && d.children[0].data.txid === 'hidden') {
+        d.depth = d.children[0].depth - 1;
+        d.y = d.depth * -300;
+      }
+    })
+
     let left = this.root;
     let right = this.root;
 
@@ -205,21 +212,38 @@ export class GraphTest2Component implements OnInit {
   private checkForGrouping(updatingNode: any) {
     if (this.dataConversionService.groupingInitiated()) {
       if (updatingNode.parent.data.txid === this.root.data.txid) {
-        const index = this.root.children.findIndex((child: any) => child.data.txid === updatingNode.data.txid);
-        const newGroupNode = this.dataConversionService.createGroupHierarchy(updatingNode.children, index+1, updatingNode.data.geolocation, updatingNode);
-        updatingNode.children = newGroupNode;
-        this.updateTree(updatingNode);
-        return;
+        this.closeAndExpandGroup();
+        this.expandedGroup = {parent: updatingNode};
       } else {
-        const nonTransactionNodes = this.nodes.filter((d: any) => (d.data.txid.includes('group') || d.parent.data.txid === this.root.data.txid) && d.children);
+        const nonTransactionNodes = this.nodes.filter((d: any) => d.parent && (d.data.txid.includes('group') || d.parent.data.txid === this.root.data.txid) && d.children);
         nonTransactionNodes.forEach((d: any) => {
           const nonGroupChildren = d.children.filter((child: any) => !child.data.txid.includes('group'));
-          if (nonGroupChildren.length > 0 && this.dataConversionService.countNumTransactions(nonGroupChildren) > this.dataConversionService.getThreshold()) {
+          const nonGroupTransactions: any[] = [];
+          nonGroupChildren.forEach((c: any) => {
+            if (c.children) {
+              nonGroupTransactions.push(...c.children)
+            }
+          })
+          if (nonGroupChildren.length > 0 && this.dataConversionService.countNumTransactions(nonGroupTransactions) > this.dataConversionService.getThreshold()) {
             const index = d.children.findIndex((child: any) => !child.data.txid.includes('group'));
             const newGroupId = d.data.txid.includes('group') ? parseInt(d.data.txid.match(/\d+/g)[0] + (index+1).toString()) : (index+1).toString();
-            const newGroupNode = this.dataConversionService.createGroupHierarchy(nonGroupChildren, newGroupId, d.data.geolocation, d);
+            const newGroupNode = this.dataConversionService.createGroupHierarchy(nonGroupTransactions, newGroupId, nonGroupChildren[0].data.geolocation, d, nonGroupChildren);
             d.children.splice(index, nonGroupChildren.length, ...newGroupNode);
-            this.updateTree(d);
+            this.tree(this.root);
+            this.nodes = this.root.descendants();
+            this.nodes.forEach((d: any) => {
+              d.x0 = d.x;
+              d.y0 = d.y
+            })
+            this.expandedGroup = undefined;
+            if (newGroupNode[0].children && newGroupNode[0].children.length > 0) {
+              const groupToExpand = newGroupNode[0].children.reduce((maxItem: any, currentItem: any) => {
+                  return currentItem.data.totalNumTransactions > maxItem.data.totalNumTransactions ? currentItem : maxItem;
+              });
+              this.closeAndExpandGroup(groupToExpand);
+            } else {
+              this.updateTree(d);
+            }
             return;
           }
         });
@@ -228,8 +252,22 @@ export class GraphTest2Component implements OnInit {
       if (this.dataConversionService.getTotalNumTransactionsRetrieved() > this.dataConversionService.getThreshold()) {
         this.root.children.forEach((d: any, index: number) => {
           if (d.children) {
-            d.children = this.dataConversionService.createGroupHierarchy(d.children, index+1, d.data.geolocation, d);
-            this.updateTree(d);
+            const newGroupNode = this.dataConversionService.createGroupHierarchy(d.children, index+1, d.data.geolocation, d)
+            d.children = newGroupNode;
+            this.tree(this.root);
+            this.nodes = this.root.descendants();
+            this.nodes.forEach((d: any) => {
+              d.x0 = d.x;
+              d.y0 = d.y
+            })
+            if (newGroupNode[0].children && newGroupNode[0].children.length > 0) {
+              const groupToExpand= newGroupNode[0].children.reduce((maxItem: any, currentItem: any) => {
+                  return currentItem.data.totalNumTransactions > maxItem.data.totalNumTransactions ? currentItem : maxItem;
+              });
+              this.closeAndExpandGroup(groupToExpand);
+            } else {
+              this.updateTree(d);
+            }
           }
         })
         return;
@@ -281,40 +319,38 @@ export class GraphTest2Component implements OnInit {
 
     const txoNodesEnter= nodeEnter.filter((d: any) => d.data.txid.includes('txo'));
 
-    txoNodesEnter
-      .on("contextmenu", (event: any, d: any) => {
-        event.preventDefault();
+    txoNodesEnter.on("contextmenu", (event: any, d: any) => {
+      event.preventDefault();
 
-        if (!d.children && d.data.type === 'vin') {
-          contextMenu.style("display", "block").style("left", event.pageX + "px").style("top", event.pageY + "px");
+      if (!d.children && d.data.type === 'vin') {
+        contextMenu.style("display", "block").style("left", event.pageX + "px").style("top", event.pageY + "px");
 
-          contextMenu.select(".menu-item").on("click", async () => {
-            d3.selectAll(`.loader-${d.data.txid} .loader`).style("display", "block");
+        contextMenu.select(".menu-item").on("click", async () => {
+          d3.selectAll(`.loader-${d.data.txid} .loader`).style("display", "block");
 
-            const transactionsRetrieved = await this.addTransactionsToPath(d.data.vinTxids, d);
+          const transactionsRetrieved = await this.addTransactionsToPath(d.data.vinTxids, d);
 
-            await new Promise(f => setTimeout(f, 100));
+          await new Promise(f => setTimeout(f, 100));
 
-            await Promise.all(transactionsRetrieved.map(async (transaction: any) => {
-              transaction.parent = d;
-              transaction.depth = d.depth + 1;
-      
-              await Promise.all(transaction.children.map(async (output: any) => {
-                  output.parent = transaction;
-                  output.depth = transaction.depth + 1;
-              }));
+          await Promise.all(transactionsRetrieved.map(async (transaction: any) => {
+            transaction.parent = d;
+            transaction.depth = d.depth + 1;
+    
+            await Promise.all(transaction.children.map(async (output: any) => {
+                output.parent = transaction;
+                output.depth = transaction.depth + 1;
             }));
+          }));
 
-            d.children = transactionsRetrieved;
+          d.children = transactionsRetrieved;
 
-            contextMenu.style("display", "none");
-            d3.selectAll(`.loader-${d.data.txid} .loader`).style("display", "none");
-
-            this.tree(this.root)
-            this.checkForGrouping(d);
-          });
-        }
-      })
+          contextMenu.style("display", "none");
+          d3.selectAll(`.loader-${d.data.txid} .loader`).style("display", "none");
+          this.tree(this.root);
+          this.checkForGrouping(d);
+        });
+      }
+    })
 
     txoNodesEnter
       .append('circle')
@@ -393,10 +429,10 @@ export class GraphTest2Component implements OnInit {
     transactionNodesEnter
       .append("foreignObject")
       .attr("class", "txidText")
-      .attr("width", 215)
+      .attr("width", 220)
       .attr("height", 200)
       .attr("x", -110)
-      .attr('y', -215)
+      .attr('y', -220)
       .append("xhtml:div")
       .style("width", "100%")
       .style("height", "100%")
@@ -409,66 +445,10 @@ export class GraphTest2Component implements OnInit {
 
     const groupNodesEnter = nodeEnter.filter((d: any) => d.data.txid.includes('group'));
 
-    groupNodesEnter
-      .on("dblclick", (event: any, d: any) => {
-        event.stopPropagation();
-
-        const groupNode = d;
-        let closingGroupParent: any = undefined;          
-          
-        if (this.expandedGroup) {
-          const originalParent = this.expandedGroup.parent;
-          const indexOfGroup = originalParent.children.indexOf(this.expandedGroup);
-
-          this.nodes.forEach((d: any) => {
-            if (d.data.txid === originalParent.data.txid) {
-              this.expandedGroup.parent = d;
-              d.children.splice(indexOfGroup, this.newChildren.length, this.expandedGroup);
-              closingGroupParent = d;
-            }
-          })
-        }
-
-        this.expandedGroup = cloneDeep(groupNode);
-        
-        if (groupNode.data.txid.includes('group')) {
-          const transactionsInsideGroup = cloneDeep(groupNode.data.transactions);
-          const subsequentGroups = groupNode.children;
-
-          // calculate the depth of tree
-          const getDepth = (node: any): number => {
-            if (!node.children || node.children.length === 0) {
-              return 1;
-            } else {
-              return 1 + Math.max(...node.children.map(getDepth));
-            }
-          };
-
-          const innerDepth = getDepth({ children: transactionsInsideGroup });
-          const flags = { hiddenNodeAdded: false };
-
-          const groupNodeDepth = groupNode.depth;
-          const groupNodeParent = groupNode.parent;
-          const groupNodeIndex = groupNode.parent.children.indexOf(groupNode);
-
-          this.newChildren = transactionsInsideGroup.map((transaction: any) => {
-            return this.releaseFromGroup(transaction, groupNodeDepth, groupNodeParent, innerDepth, subsequentGroups, groupNodeDepth, flags);
-          });
-
-          this.root.descendants().forEach((d: any) => {
-            if (d.data.txid === groupNodeParent.data.txid) {
-              d.children.splice(groupNodeIndex, 1, ...this.newChildren);
-              this.newChildren.forEach((newChild: any) => {
-                newChild.parent = d;
-              });
-            }
-          });
-
-          setTimeout(() => {
-            this.updateTree(groupNode, closingGroupParent);
-          }, 0);
-        }
-      })
+    groupNodesEnter.on("dblclick", (event: any, d: any) => {
+      event.stopPropagation();
+      this.closeAndExpandGroup(d);
+    })
 
     groupNodesEnter
       .append("rect")
@@ -521,15 +501,27 @@ export class GraphTest2Component implements OnInit {
     const descendants = d.descendants();
     const ancestors = findAncestors(d);
 
+    let descendantsOfHidden: any[] = [];
+    let ancestorsOfHidden: any[] = [];
+    const hasHiddenDescendant = descendants.some((des: any) => des.data.txid === 'hidden');
+    const hasHiddenAncestor = ancestors.some((anc: any) => anc.data.txid === 'hidden');
+    if (hasHiddenDescendant) {
+      const trueHiddenNode = this.nodes.find((des: any) => des.data.txid === 'hidden' && des.children);
+      descendantsOfHidden = trueHiddenNode.descendants();
+    } else if (hasHiddenAncestor) {
+      const trueHiddenNode = this.nodes.find((anc: any) => anc.data.txid === 'hidden');
+      ancestorsOfHidden = findAncestors(trueHiddenNode);
+    }
+
     this.gNode.selectAll('g.node').style("opacity", (node: any) => {
-      return descendants.includes(node) || ancestors.includes(node) ? 1 : 0.3;
+      return descendants.includes(node) || ancestors.includes(node) || descendantsOfHidden.includes(node) || ancestorsOfHidden.includes(node) ? 1 : 0.3;
     });
     this.gLink.selectAll('path.link').style("opacity", (link: any) => {
-      return descendants.includes(link.parent) || ancestors.includes(link) || 
+      return descendants.includes(link.parent) || ancestors.includes(link) || descendantsOfHidden.includes(link.parent) || ancestorsOfHidden.includes(link) ||
       (d.parent === link.parent && d === link) ? 1 : 0.3;
     });
     this.gLink.selectAll('.link-text-group1').style("opacity", (link: any) => {
-      return descendants.includes(link.source) || ancestors.includes(link.target) ||
+      return descendants.includes(link.source) || ancestors.includes(link.target) || descendantsOfHidden.includes(link.source) || ancestorsOfHidden.includes(link.target) ||
       (d.parent === link.source && d === link.target) ? 1 : 0.3;
     });
 
@@ -576,6 +568,72 @@ export class GraphTest2Component implements OnInit {
     this.gLink.selectAll('path.link').style("opacity", 1);
     this.gLink.selectAll('.link-text-group1').style("opacity", 1);
     d3.select("#node-info-box").remove();
+  }
+
+  private closeAndExpandGroup(expandingGroup: any = undefined) {
+    let closingGroupParent: any = undefined;
+      
+    if (this.expandedGroup) {
+      if (this.expandedGroup.children) {
+        const groupParent = this.expandedGroup.parent;
+        const indexOfGroup = groupParent.children.indexOf(this.expandedGroup);
+
+        const originalParent = this.nodes.find((node: any) => node.data.txid === groupParent.data.txid);
+        this.expandedGroup.parent = originalParent;
+        originalParent.children.splice(indexOfGroup, this.newChildren.length, this.expandedGroup);
+        closingGroupParent = originalParent
+
+      } else {
+        const groupParent = this.nodes.find((node: any) => node.data.txid === this.expandedGroup.parent.data.txid);
+        const geoTxoList = groupParent.children.filter((child: any) => !child.data.txid.includes('group'));
+        const index = groupParent.children.findIndex((child: any) => !child.data.txid.includes('group'));
+        const newGroupId = groupParent.data.txid.includes('group') ? parseInt(groupParent.data.txid.match(/\d+/g)[0] + (index+1).toString()) : (index+1).toString();
+        const transactionList = geoTxoList.map((item: any) => item.children).flat();
+        const newGroupNode = this.dataConversionService.createGroupHierarchy(transactionList, newGroupId, geoTxoList[0].data.geolocation, groupParent, geoTxoList);
+        groupParent.children.splice(index, geoTxoList.length, ...newGroupNode);
+      }
+
+      this.tree(this.root);
+      this.nodes = this.root.descendants();
+      if (expandingGroup) {
+        expandingGroup = this.nodes.find((node: any) => node.data.txid === expandingGroup.data.txid);
+      }
+    }
+
+    if (expandingGroup) {
+      this.expandedGroup = cloneDeep(expandingGroup);
+      const transactionsInsideGroup = cloneDeep(expandingGroup.data.transactions);
+      const subsequentGroups = expandingGroup.children;
+
+      const getDepth = (node: any): number => {
+        if (!node.children || node.children.length === 0) {
+          return 1;
+        } else {
+          return 1 + Math.max(...node.children.map(getDepth));
+        }
+      };
+
+      const innerDepth = getDepth({ children: transactionsInsideGroup });
+      const flags = { hiddenNodeAdded: false };
+
+      const groupNodeDepth = expandingGroup.depth;
+      const groupNodeParent = expandingGroup.parent;
+      const groupNodeIndex = expandingGroup.parent.children.indexOf(expandingGroup);
+
+      this.newChildren = transactionsInsideGroup.map((transaction: any) => {
+        return this.releaseFromGroup(transaction, groupNodeDepth, groupNodeParent, innerDepth, subsequentGroups, groupNodeDepth, flags);
+      });
+
+      this.nodes.forEach((d: any) => {
+        if (d.data.txid === groupNodeParent.data.txid) {
+          d.children.splice(groupNodeIndex, 1, ...this.newChildren);
+          this.newChildren.forEach((newChild: any) => {
+            newChild.parent = d;
+          });
+        }
+      });
+      this.updateTree(expandingGroup, closingGroupParent);
+    }
   }
 
   private renderLinks(expandingSource: any, closingSource: any) {

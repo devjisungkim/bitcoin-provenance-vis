@@ -110,3 +110,32 @@
 .list-row .list-item>*{
     padding-left: .625rem;padding-right: .625rem
 }
+
+.view-button {
+    cursor: pointer;
+}
+
+.pagination {
+    margin-top: 10px;
+}
+
+.pagination .page-link {
+    box-shadow: none;
+    background-color: transparent;
+    border-color: transparent;
+    color: white;
+}
+
+.pagination .page-link:hover {
+    color: var(--bitcoin-theme);
+    border-bottom: 2px solid white;
+}
+
+.pagination .page-item.active .page-link {
+    color: white;
+    border-bottom: 2px solid var(--bitcoin-theme);
+}
+
+.pagination .page-item.disabled .page-link {
+    color: #6c757d;
+}

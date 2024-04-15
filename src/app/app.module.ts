@@ -40,6 +40,7 @@ import { GraphTestComponent } from './graph-test/graph-test.component';
 import { GraphTest2Component } from './graph-test2/graph-test2.component';
 import { GraphTest3Component } from './graph-test3/graph-test3.component';
 import { ErrorComponent } from './error/error.component';
+import { NgxSkeletonLoaderModule } from 'ngx-skeleton-loader';
 
 @NgModule({
   declarations: [
@@ -83,7 +84,8 @@ import { ErrorComponent } from './error/error.component';
     MdbTooltipModule,
     MdbValidationModule,
     MatProgressSpinnerModule,
-    ReactiveFormsModule
+    ReactiveFormsModule,
+    NgxSkeletonLoaderModule
   ],
   providers: [],
   bootstrap: [AppComponent]

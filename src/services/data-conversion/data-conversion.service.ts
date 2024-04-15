@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
 import * as d3 from 'd3';
+import { DataRetrievalService } from '../data-retrieval/data-retrieval.service';
 
 declare var require: any
 var iso3311a2 = require('../../../node_modules/iso-3166-1-alpha-2')
@@ -14,9 +15,23 @@ export class DataConversionService {
   private threshold: number = 3;
   private totalNumTransactionsRetrieved: number = -1; // -1 to exclude root transaction
 
-  constructor() { }
+  constructor(
+    private dataRetrievalService: DataRetrievalService
+  ) { }
+
+  private randomGenerateVinGeolocation(transaction: any): any {
+    const geolocationsCandidates = ['AU', 'NZ', 'GB', 'US'];
+    for (const vin of transaction.vin) {
+      const randomGeo =  Math.floor(Math.random() * geolocationsCandidates.length);
+      vin.geolocation = geolocationsCandidates[randomGeo];
+    }
+    return transaction;
+  }
 
   public convertToHierarchy(txid: string, transaction: any, parentTxo: any = null) {
+    if (this.dataRetrievalService.url !== 'http://localhost:5000/api/') {
+      transaction = this.randomGenerateVinGeolocation(transaction);
+    }
     const transactionHierarchy = this.createTransactionHierarchy(txid, transaction, parentTxo);
     this.totalNumTransactionsRetrieved += 1;
     return transactionHierarchy;
@@ -128,7 +143,6 @@ export class DataConversionService {
     };
 
     const d3TxNode = this.convertToD3Hierarchy(txNode);
-
     return d3TxNode;
   }
 
@@ -166,7 +180,9 @@ export class DataConversionService {
     let currentDepthQueue: any[] = []
 
     for (const tx of transactions) {
-       currentDepthQueue.push([tx, 0]);
+      if (tx !== undefined) {
+        currentDepthQueue.push([tx, 0]);
+      }
     }
 
     while (currentDepthQueue.length > 0) {
@@ -174,7 +190,7 @@ export class DataConversionService {
         const [transaction, depth] = currentDepthQueue.shift();
 
         if (depth === 0) {
-          topLevelTxList.push(transaction)
+          topLevelTxList.push(transaction);
         }
 
         indexedGroupedTransactions[transaction['data']['txid']] = transaction;
@@ -183,7 +199,7 @@ export class DataConversionService {
           for (const geoTxo of transaction.children) {
             if (geoTxo.data.type === 'vin' && geoTxo.children && Array.isArray(geoTxo.children)) {
               for (const tx of geoTxo.children) {
-                currentDepthQueue.push([tx, depth + 1]);
+                nextDepthQueue.push([tx, depth + 1]);
               }
             }
           }
@@ -210,11 +226,23 @@ export class DataConversionService {
     return [indexedGroupedTransactions, combinedQueue, topLevelTxList];
   }
 
-  public createGroupHierarchy(newQueue: any[], groupId: number, startingGeolocation: string, parentNode: any): any {
+  public createGroupHierarchy(newQueue: any[], groupId: number, startingGeolocation: string, parentNode: any, startingGeoTxos?: any[]): any {
     const children: any[] = [];
 
     const [indexedGroupedTransactions, nextQueue, txList] = this.groupTransactions(newQueue);
 
+    const nextGroupTxoStarters: any[] = [];
+    for (const [txid, transaction] of Object.entries(indexedGroupedTransactions)) {
+      for (const geoTxo of (transaction as any).children) {
+        for (const nextTxid of geoTxo.data.vinTxids) {
+          if (!indexedGroupedTransactions.hasOwnProperty(nextTxid)) {
+            nextGroupTxoStarters.push(geoTxo);
+            break;
+          }
+        }
+      }
+    }
+    
     const numTransactionsInGroup = Object.keys(indexedGroupedTransactions).length;
     const displayData = {
       'Group\'s Starting Geolocation': iso3311a2.getCountry(startingGeolocation),
@@ -230,7 +258,15 @@ export class DataConversionService {
       'children': []
     }
 
-    groupNode['transactions'] = this.transformBackToHierarchy(txList, indexedGroupedTransactions)
+    const transactionHierarchy = this.transformBackToHierarchy(txList, indexedGroupedTransactions);
+
+    startingGeoTxos?.forEach((txo: any) => {
+      txo.parent = parentNode;
+      const filteredChildren = transactionHierarchy.filter(transaction => txo.data.vinTxids.includes(transaction.data.txid));
+      txo.children = filteredChildren.length > 0 ? filteredChildren : undefined;
+    });
+  
+    groupNode['transactions'] = startingGeoTxos ?? transactionHierarchy;
 
     const d3GroupNode = this.convertToD3Hierarchy(groupNode);
     d3GroupNode.parent = parentNode;
@@ -240,25 +276,36 @@ export class DataConversionService {
     } else {
       let newGroupId = parseInt(groupId.toString() + '1');
 
-      const geoGroups: { [key: string]: any[] } = {};
-      for (const tx of nextQueue) {  
-        const parentGeo = tx.parent.data.geolocation;
-          geoGroups[parentGeo] = geoGroups[parentGeo] || [];
-          geoGroups[parentGeo].push(tx);
+      const geoTxoGroups: { [key: string]: any[] } = {};
+      for (const geoTxo of nextGroupTxoStarters) {
+        const geo = geoTxo.data.geolocation;
+        geoTxoGroups[geo] = geoTxoGroups[geo] || [];
+        geoTxoGroups[geo].push(geoTxo);
       }
       
-      for (const [geoKey, value] of Object.entries(geoGroups)) {
-        const nStartingTx: number = 3;
+      for (const [geoKey, geoTxoStarter] of Object.entries(geoTxoGroups)) {
+        const numStartingTx: number = 2;
         const chunks: any[][] = [];
-        for (let j = 0; j < value.length; j += nStartingTx) {
-          chunks.push(value.slice(j, j + nStartingTx));
+        for (let j = 0; j < geoTxoStarter.length; j += numStartingTx) {
+          chunks.push(geoTxoStarter.slice(j, j + numStartingTx));
         }
         
         for (const chunk of chunks) {
           if (!d3GroupNode.children) {
             d3GroupNode.children = []; 
           }
-          d3GroupNode.children.push(...this.createGroupHierarchy(chunk, newGroupId, geoKey, d3GroupNode));
+          
+          const nextTransactionList: any[] = [];
+          for (const transaction of nextQueue) {
+            for (const chunkItem of chunk) {
+              if (chunkItem.data.vinTxids.includes(transaction.data.txid)) {
+                nextTransactionList.push(transaction);
+              }
+            }
+          }
+
+          const siblingGroup = this.createGroupHierarchy(nextTransactionList, newGroupId, geoKey, d3GroupNode, chunk)
+          d3GroupNode.children.push(...siblingGroup);
           newGroupId++;
         }
       }
@@ -271,6 +318,7 @@ export class DataConversionService {
 
   private transformBackToHierarchy(txList: any[], indexedGroupedTransactions: { [key: string]: { [key: string]: any } }): any[] {
     const finalList: any[] = [];
+    let startingGroupGeoTxo: any;
 
     for (const tx of txList) {
       const tx1 = indexedGroupedTransactions[tx.data.txid];
@@ -297,6 +345,13 @@ export class DataConversionService {
       }
       finalList.push(tx1);
     }
+
+    if (startingGroupGeoTxo) {
+      startingGroupGeoTxo.children = finalList;
+      startingGroupGeoTxo.data.vinTxids = finalList.map(item => item.data.txid);
+      return [startingGroupGeoTxo];
+    }
+
     return finalList;
   }
 
