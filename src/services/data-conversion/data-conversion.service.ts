@@ -97,7 +97,7 @@ export class DataConversionService {
     for (const geoKey of sortedVinKeys) {
       const vinList = groupedVin[geoKey];
       const vinTxids = vinList.map(vin => vin.txid);
-      const values = vinList.map(vin => vin.value);
+      const values = vinList.map(vin => parseInt(vin.value));
       const totalValue = values.reduce((a, b) => a + b, 0);
       const minValue = Math.min(...values);
       const maxValue = Math.max(...values);
@@ -233,11 +233,13 @@ export class DataConversionService {
 
     const nextGroupTxoStarters: any[] = [];
     for (const [txid, transaction] of Object.entries(indexedGroupedTransactions)) {
-      for (const geoTxo of (transaction as any).children) {
-        for (const nextTxid of geoTxo.data.vinTxids) {
-          if (!indexedGroupedTransactions.hasOwnProperty(nextTxid)) {
-            nextGroupTxoStarters.push(geoTxo);
-            break;
+      if ((transaction as any).children) {
+        for (const geoTxo of (transaction as any).children) {
+          for (const nextTxid of geoTxo.data.vinTxids) {
+            if (!indexedGroupedTransactions.hasOwnProperty(nextTxid)) {
+              nextGroupTxoStarters.push(geoTxo);
+              break;
+            }
           }
         }
       }
@@ -259,7 +261,7 @@ export class DataConversionService {
     }
 
     const transactionHierarchy = this.transformBackToHierarchy(txList, indexedGroupedTransactions);
-
+    
     startingGeoTxos?.forEach((txo: any) => {
       txo.parent = parentNode;
       const filteredChildren = transactionHierarchy.filter(transaction => txo.data.vinTxids.includes(transaction.data.txid));

@@ -7,8 +7,8 @@ import { Observable, forkJoin, map } from 'rxjs';
 })
 export class DataRetrievalService {
 
-  //url: string = 'http://localhost:5000/api/';
-  url: string = 'https://doe-good-formally.ngrok-free.app/';
+  url: string = 'http://localhost:5000/api/';
+  //url: string = 'https://doe-good-formally.ngrok-free.app/';
 
   headers = new HttpHeaders({
     'ngrok-skip-browser-warning': 'skip',
@@ -20,14 +20,19 @@ export class DataRetrievalService {
     ) {  }
 
   private requestTransaction(txid: string): Observable<any> {
+    /*
     const jsonURL = `${this.url}get_transaction`;
     return this.http.get(jsonURL, { headers: this.headers, params: { transaction_id: txid } })
+    */
+    
+    const jsonURL = `${this.url}getTransaction/${txid}`;
+    return this.http.get(jsonURL, { headers: this.headers });
   }
 
   public getTransactions(txid_list: string[]): Observable<any[]> {
     const observables = txid_list.map(txid => {
       return this.requestTransaction(txid).pipe(
-        map((response: any) => response)
+        map((response: any) => response.transaction)
       );
     });
     return forkJoin(observables);
