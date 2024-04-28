@@ -34,6 +34,9 @@ export class GraphTest2Component implements OnInit {
   private expandedGroup: any;
   private newChildren: any;
   private zoom: any;
+  private uniqueTimeToDepthsMap: Map<string, number[]> = new Map();
+  private sequenceMarkers: any[] = [];
+  private realTimeZoomEvent: any;
   searchQuery: string = '';
   showErrorMessage: boolean = false;
   searchErrorMessage: string = '';
@@ -66,6 +69,7 @@ export class GraphTest2Component implements OnInit {
 
       this.svg = d3.selectAll('#graphContainer')
         .append('svg')
+        .attr('id', 'svg-container')
         .attr('width', this.screenWidth)
         .attr('height', this.screenHeight)
         .attr('viewBox', `-${this.screenWidth/4} -${this.screenHeight/2} ${this.screenWidth} ${this.screenHeight}`)
@@ -78,6 +82,8 @@ export class GraphTest2Component implements OnInit {
         .scaleExtent([0.001, 2])
         .on("zoom", (event: any) => {
           this.g.attr("transform", event.transform);
+          this.realTimeZoomEvent = event;
+          this.updateSequenceBar(event);
         });
 
       this.svg.call(this.zoom)
@@ -91,22 +97,58 @@ export class GraphTest2Component implements OnInit {
     });
   }     
 
-  private async addTransactionsToPath(txid_list: string[], parentTxoNode: any = null): Promise<any[]> {
-    const transactions: any[] | undefined = await this.dataRetrievalService.getTransactions(txid_list).toPromise();
+  private updateSequenceBar(event: any) {
+    const sequenceBar = d3.select('#sequence-bar');
+
+    if (this.sequenceMarkers.length > 0) {
+      const sequenceMarkers = sequenceBar.selectAll('.sequence-marker').data(this.sequenceMarkers, (d: any) => d.id);
+
+      const sequenceMarkersEnter = sequenceMarkers
+        .enter()
+        .append('div')
+        .attr('class', 'sequence-marker')
+        .attr('id', (d: any) => `sequence-marker-${d.id}`)
+
+      sequenceMarkersEnter
+        .append('text')
+        .attr('class', 'marker-text')
+        .text((d: any) => d.monthYear);
+
+      const sequenceMarkersUpdate = sequenceMarkersEnter.merge(sequenceMarkers as any);
+
+      sequenceMarkersUpdate
+        .style('left', (d: any) => {
+          const node = d3.select(`#node-${d.followNode.data.txid}`);
+          const rect = (node.node() as SVGElement).getBoundingClientRect();
+          const rectNode = node.select('rect');
+          const rectX = +rectNode.attr('y')
+          let addPx = 0
+          if (d.doubleMarked) {
+            addPx = d.id === d.followNode.data.displayData['Earliest Time (Left)'].replace(" ", "") ? 0 : 50;
+          }
+          return `${rect.left + Math.abs(rectX*event.transform.k) + addPx*event.transform.k}px`;
+        });
+
+      sequenceMarkers.exit().remove()
+    }
+  }
+
+  private async addTransactionsToPath(txidList: string[], parentTxoNode: any = null): Promise<any[]> {
+    const transactions: any[] | undefined = await this.dataRetrievalService.getTransactions(txidList).toPromise();
     const convertedTransactions: any[] = [];
 
     if (transactions === undefined) {
       throw new Error('Transactions are undefined');
     }
   
-    txid_list.forEach((txid, index) => {
+    txidList.forEach((txid, index) => {
       const transaction = transactions[index];
       if (transaction) {
         const converted_tx = this.dataConversionService.convertToHierarchy(txid, transaction, parentTxoNode);
         convertedTransactions.push(converted_tx);
-      } /*else {
+      } else {
         console.error(`Transaction data missing for txid: ${txid}`);
-      }*/
+      }
     })
 
     return convertedTransactions;
@@ -161,10 +203,98 @@ export class GraphTest2Component implements OnInit {
       if (node.x < left.x) left = node;
       if (node.x > right.x) right = node;
     });
+    
+    this.sequenceMarkers = [];
+    this.nodes.filter((d: any) => !['txo', 'hidden'].some(keyword => d.data.txid.includes(keyword))).forEach((d: any) => {
+      const unixTimes = d.data.time ? [d.data.time] : [d.data.earliestTime, d.data.latestTime];
+      let doubleMarked = false;
+      unixTimes.forEach(unixTime => {
+        if (unixTime) {
+          const monthYear = new Date(unixTime * 1000).toLocaleString('default', { month: 'long', year: 'numeric' });
+          const existingMarkerIndex = this.sequenceMarkers.findIndex((marker: any) => marker.monthYear === monthYear);
+
+          if (existingMarkerIndex === -1) {
+            const uniqueSequenceMarker = { id: monthYear.replace(" ", "") , monthYear: monthYear, followNode: d, doubleMarked: doubleMarked }
+            this.sequenceMarkers.push(uniqueSequenceMarker);
+            doubleMarked = true;
+          } else if (existingMarkerIndex !== -1 && this.sequenceMarkers[existingMarkerIndex].followNode.depth < d.depth) {
+            this.sequenceMarkers[existingMarkerIndex].followNode = d;
+            this.sequenceMarkers[existingMarkerIndex].doubleMarked = doubleMarked;
+            doubleMarked = true;
+          }
+        }
+      })
+    })
 
     this.renderLinks(expandingSource, closingSource);
     this.renderNodes(expandingSource, closingSource);
     this.renderAdditionalGraphElements(expandingSource, closingSource);
+    this.updateSequenceBar(this.realTimeZoomEvent);
+  }
+
+  private positionRelativeToTime() {
+    this.uniqueTimeToDepthsMap = new Map();
+    this.nodes.filter((d: any) => !['txo', 'hidden'].some(keyword => d.data.txid.includes(keyword)))
+      .forEach((node: any) => {
+        const unixTime = node.data.time || node.data.latestTime;
+        if (unixTime) {
+          const monthYear = new Date(unixTime * 1000).toLocaleString('default', { month: 'long', year: 'numeric' });
+          const depthsArray = this.uniqueTimeToDepthsMap.get(monthYear) || [];
+          if (!depthsArray.includes(node.depth)) {
+            depthsArray.push(node.depth);
+          }
+          this.uniqueTimeToDepthsMap.set(monthYear, depthsArray);
+        }
+      });
+
+    const sortedNodes = this.nodes.filter((d: any) => !['txo', 'hidden'].some(keyword => d.data.txid.includes(keyword)))
+      .sort((a: any, b: any) => {
+        const unixTimeA = a.data.time || a.data.latestTime;
+        const unixTimeB = b.data.time || b.data.latestTime;
+        return unixTimeB - unixTimeA;
+      });
+
+    let lastDepthTaken = -1;
+    const rootDateKey = new Date(this.root.data.time * 1000).toLocaleString('default', { month: 'long', year: 'numeric' });
+    sortedNodes.forEach((d: any) => {
+      const unixTime = d.data.time || d.data.latestTime;
+      const dateKey = new Date(unixTime * 1000).toLocaleString('default', { month: 'long', year: 'numeric' });
+      const depthsList = this.uniqueTimeToDepthsMap.get(dateKey);
+      const originalDepthIndex = depthsList?.indexOf(d.depth)
+
+      if (dateKey === rootDateKey) {
+        // root month
+        lastDepthTaken = Math.max(lastDepthTaken, d.depth);
+        return;
+      } else {
+        let depthGap = 0;
+        if (originalDepthIndex === 0) {
+          if (d.data.txid.includes('group')) {
+            if (d.parent.data.txid.includes('txo')) {
+              depthGap = 2;
+            } else {
+              depthGap = 1;
+            }
+          } else {
+            depthGap = 2;
+          }
+          d.depth = lastDepthTaken + depthGap;
+        } else {
+          if (d.data.txid.includes('group')) {
+            if (d.parent.data.txid.includes('group')) {
+              d.depth = d.parent.depth + 1;
+            }
+          } else {
+            d.depth = d.parent.parent.depth + 2;
+          }
+        }
+      }
+      lastDepthTaken = Math.max(lastDepthTaken, d.depth);
+    })
+
+    this.nodes.filter((d: any) => ['txo', 'hidden'].some(keyword => d.data.txid.includes(keyword))).forEach((d: any) => {
+      d.depth = d.parent.depth + 1;
+    })
   }
 
   private recalculatePosition() {
@@ -178,6 +308,8 @@ export class GraphTest2Component implements OnInit {
       }
     })
 
+    this.positionRelativeToTime();
+  
     let hiddenAverageX = 0;
     let hiddenMaxDepth = 0;
     const hiddenNodes = this.nodes.filter((d: any) => d.data.txid === 'hidden');
@@ -195,33 +327,60 @@ export class GraphTest2Component implements OnInit {
         d.depth = d.parent.depth + 1;
       }
       d.y = d.depth * -300;
-      /*
-      if (d.data.type === 'vout') {
-        d.y = d.parent.y + 300;
-      }
-      */
     });
 
-    /*
+    const positionXOverlapCheck: any[] = [];
+    this.root.children.forEach((d: any, i: number) => {
+      const descendants = d.descendants();
+      let maxX = -Infinity;
+      let minX = Infinity;
+      descendants.forEach((d: any) => {
+        minX = d.x < minX ? d.x : minX;
+        maxX = d.x > maxX ? d.x : maxX;
+      })
+      const positionX: { node: any, index: number, minX: number; maxX: number } = {
+        node: d,
+        index: i,
+        minX: minX,
+        maxX: maxX
+      };
+      positionXOverlapCheck.push(positionX)
+    })
 
-    this.nodes.forEach((d: any) => {
-      if (d.children && d.children[0].data.txid === 'hidden') {
-        d.depth = d.children[0].depth - 1;
-        d.y = d.depth * -300;
+    function checkOverlap(posX1: any, posX2: any) {
+      const hasOverlap = (posX1.minX <= posX2.maxX && posX1.maxX >= posX2.minX) ||
+                        (posX2.minX <= posX1.maxX && posX2.maxX >= posX1.minX);
+      return hasOverlap;
+    } 
+    function calculateOverlapDistance(posX1: any, posX2: any) {
+      const distance = Math.abs(posX1.maxX - posX2.minX);
+      return distance;
+    }
+  
+    positionXOverlapCheck.forEach((pos: any, i: number) => {
+      if (i+1 < positionXOverlapCheck.length) {
+        const overlapExists = checkOverlap(positionXOverlapCheck[i], positionXOverlapCheck[i+1]);
+        if (overlapExists) {
+          const distance = calculateOverlapDistance(positionXOverlapCheck[i], positionXOverlapCheck[i+1]);
+          positionXOverlapCheck[i+1].node.descendants().forEach((d: any) => {
+            d.x += distance + 300;
+          })
+          positionXOverlapCheck[i+1].maxX += distance + 300;
+          positionXOverlapCheck[i+1].minX += distance + 300;
+        }
       }
     })
-    */
 
     this.nodes.forEach((d: any) => {
       d.x0 = d.x;
       d.y0 = d.y;
-  });
+    });
   }
 
   private renderNodes(expandingSource: any, closingSource: any) {
     const contextMenu = d3.select("#context-menu");
     d3.select("body").on("click", () => {
-          contextMenu.style("display", "none");
+      contextMenu.style("display", "none");
     });
 
     const nodes = this.gNode.selectAll("g.node").data(this.nodes, (d: any) => d.id || (d.id = d.data.txid));
@@ -420,8 +579,8 @@ export class GraphTest2Component implements OnInit {
       .duration(this.duration)
       .style("opacity", 0)
       .attr("transform", (d: any) => {
-        const x = closingSource  ? closingSource.x : expandingSource.x;
-        const y = closingSource  ? closingSource.y : expandingSource.y;
+        const x = closingSource ? closingSource.x : expandingSource.x;
+        const y = closingSource ? closingSource.y : expandingSource.y;
         return "translate(" + y + "," + x + ")";
       })
       .remove();
@@ -454,15 +613,15 @@ export class GraphTest2Component implements OnInit {
     }
 
     this.gNode.selectAll('g.node').style("opacity", (node: any) => {
-      return descendants.includes(node) || ancestors.includes(node) || descendantsOfHidden.includes(node) || ancestorsOfHidden.includes(node) ? 1 : 0.3;
+      return descendants.includes(node) || ancestors.includes(node) || descendantsOfHidden.includes(node) || ancestorsOfHidden.includes(node) ? 1 : 0.25;
     });
     this.gLink.selectAll('path.link').style("opacity", (link: any) => {
       return descendants.includes(link.parent) || ancestors.includes(link) || descendantsOfHidden.includes(link.parent) || ancestorsOfHidden.includes(link) ||
-      (d.parent === link.parent && d === link) ? 1 : 0.3;
+      (d.parent === link.parent && d === link) ? 1 : 0.25;
     });
     this.gLink.selectAll('.link-text-group1').style("opacity", (link: any) => {
       return descendants.includes(link.source) || ancestors.includes(link.target) || descendantsOfHidden.includes(link.source) || ancestorsOfHidden.includes(link.target) ||
-      (d.parent === link.source && d === link.target) ? 1 : 0.3;
+      (d.parent === link.source && d === link.target) ? 1 : 0.25;
     });
 
     if (['txo', 'group'].some(keyword => d.data.txid.includes(keyword))) {
@@ -594,7 +753,6 @@ export class GraphTest2Component implements OnInit {
       }
 
       this.recalculatePosition();
-      
       if (expandingGroup) {
         expandingGroup = this.nodes.find((node: any) => node.data.txid === expandingGroup.data.txid);
       }
@@ -658,7 +816,8 @@ export class GraphTest2Component implements OnInit {
       .duration(this.duration)
       .style("opacity", 1)
       .attr("d", (d: any) => {
-        return this.diagonal(d.parent, d); 
+        const isHidden = d.data.txid === 'hidden';
+        return this.diagonal(d.parent, d, isHidden); 
       })
       .attr('stroke-width', (d: any) => {
         let txoNode = undefined;
@@ -761,7 +920,7 @@ export class GraphTest2Component implements OnInit {
         .duration(this.duration)
         .style("opacity", 1)
         .style("transform", (d: any) => {
-          const translateX = (d.source.y + d.target.y) / 2;
+          const translateX = d.target.data.txid === 'hidden' ? d.target.y + 150 : d.source.y - 150;
           const translateY = (d.source.x + d.target.x) / 2;
           let rotateDeg = 0;
           if (i === 1) {
@@ -1087,7 +1246,7 @@ export class GraphTest2Component implements OnInit {
     return node;
   };
 
-  private diagonal(s: any, t: any) {
+  private diagonal(s: any, t: any, isHidden: boolean=false) {
     // Define source and target x,y coordinates
     const x = s.y;
     const y = s.x;
@@ -1111,22 +1270,21 @@ export class GraphTest2Component implements OnInit {
     let h = Math.abs(ey - y) / 2 - r;
     let w = Math.abs(ex - x) / 2 - r;
 
+    let fc = isHidden ? Math.abs(ex - x) - 150 - r : 150 - r;
+    let sc = isHidden ? 150 - r : Math.abs(ex - x) - 150 - r;
+
     // Build and return a custom arc command
     return `
           M ${x} ${y}
-          L ${x + w * xrvs} ${y}
-          C ${x + w * xrvs + r * xrvs} ${y}
-            ${x + w * xrvs + r * xrvs} ${y}
-            ${x + w * xrvs + r * xrvs} ${y + r * yrvs}
-          L ${x + w * xrvs + r * xrvs} ${ey - r * yrvs}
-          C ${x + w * xrvs + r * xrvs}  ${ey}
-            ${x + w * xrvs + r * xrvs}  ${ey}
-            ${ex - w * xrvs}  ${ey}
+          L ${x + fc * xrvs} ${y}
+          C ${x + fc * xrvs + r * xrvs} ${y}
+            ${x + fc * xrvs + r * xrvs} ${y}
+            ${x + fc * xrvs + r * xrvs} ${y + r * yrvs}
+          L ${x + fc * xrvs + r * xrvs} ${ey - r * yrvs}
+          C ${x + fc * xrvs + r * xrvs}  ${ey}
+            ${x + fc * xrvs + r * xrvs}  ${ey}
+            ${ex - sc * xrvs}  ${ey}
           L ${ex} ${ey}
     `;
-  }
-
-  public returnZero() {
-    return 0
   }
 }

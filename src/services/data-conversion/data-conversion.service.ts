@@ -139,6 +139,7 @@ export class DataConversionService {
     // transaction node
     const txNode = {
       'txid': txid,
+      'time': transaction.time,
       'children': children // including both inputs and outputs (outputs should be manually handled in d3)
     };
 
@@ -173,21 +174,27 @@ export class DataConversionService {
   }
 
   private groupTransactions(transactions: any[]): [{}, any[], any[]] {
-    let indexedGroupedTransactions: { [key: string]: { [key: string]: any } } = {};
-    let txCount: number = 0;
+    let indexedGroupedTransactions: { [key: string]: any } = {};
     let topLevelTxList: any[] = []
-    let nextDepthQueue: any[] = []
-    let currentDepthQueue: any[] = []
+    let priorityQueue: any[] = []
+
+    const compareByTime = (a: any, b: any) => b[0].data.time - a[0].data.time; 
+    
+    const enqueue = (queue: any[], transaction: any, depth: number) => {
+      queue.push([transaction, depth]);
+      queue.sort(compareByTime);
+    };
 
     for (const tx of transactions) {
       if (tx !== undefined) {
-        currentDepthQueue.push([tx, 0]);
+        enqueue(priorityQueue, tx, 0)
       }
     }
 
-    while (currentDepthQueue.length > 0) {
+    let txCount: number = 0;
+    while (priorityQueue.length > 0 && txCount < this.threshold) {
       if (txCount < this.threshold) {
-        const [transaction, depth] = currentDepthQueue.shift();
+        const [transaction, depth] = priorityQueue.shift();
 
         if (depth === 0) {
           topLevelTxList.push(transaction);
@@ -199,31 +206,16 @@ export class DataConversionService {
           for (const geoTxo of transaction.children) {
             if (geoTxo.data.type === 'vin' && geoTxo.children && Array.isArray(geoTxo.children)) {
               for (const tx of geoTxo.children) {
-                nextDepthQueue.push([tx, depth + 1]);
+                enqueue(priorityQueue, tx, depth + 1);
               }
             }
           }
         }
         txCount += 1;
-      } else {
-        break;
       }
-
-      if (currentDepthQueue.length === 0 && nextDepthQueue.length > 0 && txCount < this.threshold) {
-        currentDepthQueue = nextDepthQueue;
-        nextDepthQueue = [];
-      };
     }
-
-    const combinedQueue: any[] = [];
-    if (nextDepthQueue) {
-      combinedQueue.push(...nextDepthQueue.map(pair => pair[0]));
-    }
-    if (currentDepthQueue) {
-      combinedQueue.push(...currentDepthQueue.map(pair => pair[0]));
-    }
-
-    return [indexedGroupedTransactions, combinedQueue, topLevelTxList];
+    const nextQueue = priorityQueue.map(pair => pair[0]);
+    return [indexedGroupedTransactions, nextQueue, topLevelTxList];
   }
 
   public createGroupHierarchy(newQueue: any[], groupId: number, startingGeolocation: string, parentNode: any, startingGeoTxos?: any[]): any {
@@ -244,17 +236,31 @@ export class DataConversionService {
         }
       }
     }
+
+    const transactionKeys = Object.keys(indexedGroupedTransactions);
+    let latestTime = Number.MIN_SAFE_INTEGER;
+    let earliestTime = Number.MAX_SAFE_INTEGER; 
+    if (transactionKeys.length > 0) {
+      for (const txid of transactionKeys) {
+        const currentTime = (indexedGroupedTransactions as { [key: string]: any })[txid].data.time;
+        latestTime = Math.max(currentTime, latestTime);
+        earliestTime = Math.min(currentTime, earliestTime);
+      }
+    }
     
-    const numTransactionsInGroup = Object.keys(indexedGroupedTransactions).length;
     const displayData = {
-      'Group\'s Starting Geolocation': iso3311a2.getCountry(startingGeolocation),
-      'Total Transactions': numTransactionsInGroup,
+      'Grouped by Geolocation': iso3311a2.getCountry(startingGeolocation),
+      'Latest Time (Right)': latestTime !== Number.MIN_SAFE_INTEGER ? new Date(latestTime * 1000).toLocaleString('default', { month: 'long', year: 'numeric' }) : 'Unknown',
+      'Earliest Time (Left)': earliestTime !== Number.MAX_SAFE_INTEGER ? new Date(earliestTime * 1000).toLocaleString('default', { month: 'long', year: 'numeric' }) : 'Unknown',
+      'Total Transactions': transactionKeys.length      
     }
 
     const groupNode: any = {
       'txid': 'group' + groupId,
       'startingGeolocation': startingGeolocation,
-      'totalNumTransactions': numTransactionsInGroup,
+      'totalNumTransactions': transactionKeys.length,
+      'latestTime':latestTime !== Number.MIN_SAFE_INTEGER ? latestTime : undefined,
+      'earliestTime': earliestTime !== Number.MAX_SAFE_INTEGER ? earliestTime : undefined,
       'transactions': undefined,
       'displayData': displayData,
       'children': []
@@ -296,7 +302,7 @@ export class DataConversionService {
           if (!d3GroupNode.children) {
             d3GroupNode.children = []; 
           }
-          
+
           const nextTransactionList: any[] = [];
           for (const transaction of nextQueue) {
             for (const chunkItem of chunk) {
@@ -305,7 +311,6 @@ export class DataConversionService {
               }
             }
           }
-
           const siblingGroup = this.createGroupHierarchy(nextTransactionList, newGroupId, geoKey, d3GroupNode, chunk)
           d3GroupNode.children.push(...siblingGroup);
           newGroupId++;
@@ -318,7 +323,7 @@ export class DataConversionService {
     return children;
   }
 
-  private transformBackToHierarchy(txList: any[], indexedGroupedTransactions: { [key: string]: { [key: string]: any } }): any[] {
+  private transformBackToHierarchy(txList: any[], indexedGroupedTransactions: { [key: string]: any }): any[] {
     const finalList: any[] = [];
     let startingGroupGeoTxo: any;
 

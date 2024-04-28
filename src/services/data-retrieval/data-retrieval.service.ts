@@ -27,12 +27,13 @@ export class DataRetrievalService {
     
     const jsonURL = `${this.url}getTransaction/${txid}`;
     return this.http.get(jsonURL, { headers: this.headers });
+    
   }
 
-  public getTransactions(txid_list: string[]): Observable<any[]> {
-    const observables = txid_list.map(txid => {
+  public getTransactions(txidList: string[]): Observable<any[]> {
+    const observables = txidList.map(txid => {
       return this.requestTransaction(txid).pipe(
-        map((response: any) => response.transaction)
+        map((response: any) => response)
       );
     });
     return forkJoin(observables);
