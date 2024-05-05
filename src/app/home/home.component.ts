@@ -38,7 +38,7 @@ export class HomeComponent implements OnInit {
     const tx = this.form.get('tx')?.value;
   
     const url = this.router.serializeUrl(
-      this.router.createUrlTree([`/dev2/${tx}`])
+      this.router.createUrlTree([`/graph/${tx}`])
     );
     window.open(url, '_blank');
   }

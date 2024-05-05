@@ -8,7 +8,6 @@ import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 
 import { GraphComponent } from './graph/graph.component';
 import { HomeComponent } from './home/home.component';
-import { TransactionDetailComponent } from './transaction-detail/transaction-detail.component';
 import { FraudTransactionListComponent } from './fraud-transaction-list/fraud-transaction-list.component';
 
 import { MatToolbarModule } from '@angular/material/toolbar';
@@ -36,9 +35,6 @@ import { MdbScrollspyModule } from 'mdb-angular-ui-kit/scrollspy';
 import { MdbTabsModule } from 'mdb-angular-ui-kit/tabs';
 import { MdbTooltipModule } from 'mdb-angular-ui-kit/tooltip';
 import { MdbValidationModule } from 'mdb-angular-ui-kit/validation';
-import { GraphTestComponent } from './graph-test/graph-test.component';
-import { GraphTest2Component } from './graph-test2/graph-test2.component';
-import { GraphTest3Component } from './graph-test3/graph-test3.component';
 import { ErrorComponent } from './error/error.component';
 import { NgxSkeletonLoaderModule } from 'ngx-skeleton-loader';
 
@@ -47,11 +43,7 @@ import { NgxSkeletonLoaderModule } from 'ngx-skeleton-loader';
     AppComponent,
     GraphComponent,
     HomeComponent,
-    TransactionDetailComponent,
     FraudTransactionListComponent,
-    GraphTestComponent,
-    GraphTest2Component,
-    GraphTest3Component,
     ErrorComponent,
   ],
   imports: [

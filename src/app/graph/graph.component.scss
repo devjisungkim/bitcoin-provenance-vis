@@ -1,104 +1,184 @@
-html, body {  
-    margin: 0;
-    padding: 0;
-    background-color: var(--theme-bg-color) !important;
-}
-
-mat-toolbar {
-    background-color: transparent !important;
-    max-height: 60px;
+.legend {
     position: fixed;
-    mat-icon {
-        color: white;
-    }
+    top: 20px;
+    right: 20px;
+    background-color: var(--theme-bg-color);
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    z-index: 1000;
 }
 
-mat-sidenav-container {
-    background-color: transparent !important;
-    mat-sidenav {
-        background-color: var(--content-bg-color) !important;
-        color: var(--theme-txt-color) !important;
-        box-shadow: 0px 8px 10px -5px rgba(255, 255, 255, 0.2), 0px 16px 24px 2px rgba(255, 255, 255, 0.14), 0px 6px 30px 5px rgba(255, 255, 255, 0.12) !important;
-        max-height: 100vh;
-        width: 330px;
-        .sidebar-top-buttons {
-            margin-right: auto; 
-            margin-left:auto; 
-            display: flex;
-        }
-    }
-    .mat-drawer-backdrop {
-        background-color: transparent !important;
-    }
-    .graph-switch {
-        display: flex;
-        align-items: center;
-        justify-content: flex-start;
-        margin-right: auto;
-        label {
-            width:70px;
-            height:30px;
-            position: relative;
-            display: block;
-            background: #ebebeb;
-            border-radius: 200px;
-            border: solid 1px rgb(126, 126, 126);
-            cursor: pointer;
-        }
-        label:after {
-            content: "";
-            width:30px;
-            height:30px;
-            position: absolute;
-            top:-1px;
-            left:0;
-            background: gray;
-            border-radius: 180px;
-        }
-        input {
-            width: 0;
-            height: 0;
-            visibility: hidden;
-        }
-        input:checked + label:after {
-            left:68px;
-            transform: translateX(-100%);
-            background: gray;
-        }
-        label, label:after {
-            transition: 0.3s
-        }
-        label span {
-            position: absolute;
-            width: 100px;
-            top: 2px;
-            z-index: 100;
-        }
-        label .normal-tree {
-            left:7px;
-            color: white;
-            transition: 0.3s;
-        }
-        label .radial-tree {
-            left:50px;
-            color: black;
-            transition: 0.3s;
-        }
-      }
+.legend-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
 }
 
-.selected-node {
-    border: solid 3px yellow;
-    fill: orange;
-}
-
-.link-text {
-    fill: white;
-    font-size: 12px;
-}
-
-.node text {
+.legend-text {
     font-size: 10px;
+    margin-left: 5px;
+}
+
+.utxo-node {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background-color: green;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.stxo-node {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background-color: red;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.group-node {
+    width: 25px;
+    height: 20px;
+    background-color: var(--theme-bg-color);
+    border: 1px solid cyan; 
+}
+
+.transaction-node {
+    width: 20px;
+    height: 25px;
+    border-radius: 3px;
+    border: 1px solid var(--bitcoin-theme); 
+}
+
+.search-bar-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 70%;
+    background-color: transparent;
+    padding: 10px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+  
+.search-container {
+    display: flex;
+    align-items: center;
+    width: 100%;
+}
+  
+.search-bar {
+    width: 100%;
+    padding: 8px;
+    border: none;
+    border-radius: 4px;
+    margin-bottom: 5px;
+}
+  
+.search-button {
+    position: absolute;
+    right: 12px;
+    top: 12px;
+    padding: 8px;
+    background-color: white;
+    color: black;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+}  
+  
+.search-button i:hover {
+    color: var(--bitcoin-theme);
+}
+  
+.message-container {
+    display: flex;
+    left: 0;
+    width: 100%;
+    background-color: black;
+    z-index: 1;
+    max-height: 200px;
+    overflow-y: auto;
+    box-sizing: border-box;
+}
+
+.error-msg {
+    color: red;
+}
+
+.search-status {
+    display: flex;
+    padding: 15px;
+    margin-top: 10px;
+}
+
+.search-status mat-spinner circle {
+    stroke: var(--bitcoin-theme);
+}
+
+.success-msg {
+    color: greenyellow;
+}
+
+.search-results {
+    display: flex;
+    flex-direction: column;
+}
+
+.search-result {
+    padding: 8px;
+    cursor: pointer;
+    border-bottom: 1px solid #ddd;
+}
+
+.search-result:last-child {
+    border-bottom: none;
+}
+
+.search-result:hover {
+    background-color: #f0f0f0;
+}
+
+
+.invalid-input {
+    border: 2px solid red;
+}
+
+@keyframes rotateColor {
+    0% {
+      stroke: #ffd900; /* Gold */
+    }
+    25% {
+      stroke: none; /* Yellow */
+    }
+    50% {
+      stroke: #ffe600; /* Amber */
+    }
+    75% {
+      stroke: none; /* Gold */
+    }
+    100% {
+      stroke: #f2ff00; /* Gold */
+    }
+}
+  
+.highlighted-node {
+    stroke-width: 10; /* Set the stroke width as needed */
+    stroke: #ffd900;  /* Initial stroke color */
+  
+    /* Animation */
+    animation: rotateColor 2s linear infinite;
 }
 
 .graph-loading-spinner {
@@ -111,28 +191,75 @@ mat-sidenav-container {
     align-items: center;
     justify-content: center;
     z-index: 1000; 
-}
-
-.sidebar-loading-spinner {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
+    background-color: var(--theme-bg-color);
 }
 
 mat-spinner circle {
     stroke: var(--bitcoin-theme);
 }
 
-.not-selected {
-    display: flex;
-    text-align: center;
-    justify-content: center;
-    align-items: center;
-    margin: 8%;
-  }
+.context-menu {
+    position: absolute;
+    background-color: #ffffff;
+    border: 1px solid #cccccc;
+    padding: 5px;
+    box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1);
+}
+  
+.menu-item {
+    padding: 8px 12px;
+    cursor: pointer;
+}
 
-.list-group-item {
-    background-color: var(--content-bg-color);
+.menu-item:hover {
+    background-color: #f0f0f0;
+}
+
+#context-menu {
+    display: none;
     color: white;
+    background-color: black;
+}
+
+.loader {
+    border: 6px solid var(--bitcoin-theme);
+    border-top: 6px solid white; 
+    border-radius: 50%;
+    width: 60px;
+    height: 60px;
+    animation: spin 2s linear infinite;
+}
+  
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}  
+
+#sequence-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 20px;
+    background-color: transparent;
+    border-top: 2px solid white;
+}
+  
+.sequence-marker {
+    width: 5px;
+    height: 20px;
+    background-color: var(--bitcoin-theme); 
+    position: absolute;
+    top: -10px;
+}
+  
+.sequence-marker:hover {
+    background-color: white;
+}
+
+.marker-text {
+    position: absolute;
+    top: -70px;
+    transform: translateX(-50%); 
+    text-align: center
 }

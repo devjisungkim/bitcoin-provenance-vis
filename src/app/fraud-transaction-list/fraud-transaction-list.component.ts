@@ -58,7 +58,7 @@ export class FraudTransactionListComponent implements OnInit {
 
   navigateToGraph(txid: string) {
     const url = this.router.serializeUrl(
-      this.router.createUrlTree(['/dev2', txid])
+      this.router.createUrlTree(['/graph', txid])
     );
     window.open(url, '_blank');
   }

@@ -1,54 +1,59 @@
-<!--
 <div *ngIf="graphLoading" class="graph-loading-spinner">
   <mat-spinner></mat-spinner>
 </div>
--->
 
-<mat-toolbar style="z-index: {{ sidenavOpened ? 1 : 10}}">
-  <button class="sidenav-open" type="button" mat-icon-button (click)="sidenav.open(); sidenavOpened = !sidenavOpened">
-    <mat-icon>menu</mat-icon>
-  </button>
-</mat-toolbar>
+<div id="context-menu" class="context-menu">
+  <div class="menu-item" id="menu-item-1">Expand</div>
+</div>
 
-<mat-sidenav-container hasBackdrop="false">
-    <mat-sidenav #sidenav mode="over" disableClose="true">
-      <div class="row justify-content-end sidebar-top-buttons">
-        <div style="display: flex; align-items: center; flex-direction: row-reverse; justify-content: flex-start;">
-          <button class="sidenav-close" type="button" mat-icon-button (click)="sidenav.close(); sidenavOpened = !sidenavOpened">
-            <mat-icon>close</mat-icon>
-          </button>
-          <div class="graph-switch">
-            <input type="checkbox" id="graph-switcher" (click)="switchGraphType()">
-            <label for="graph-switcher">
-              <span class="normal-tree">N</span>
-              <span class="radial-tree">R</span>
-            </label>
-          </div>
-        </div>
-      </div>  
-      <div *ngIf="detailLoading" class="sidebar-loading-spinner">
-        <mat-spinner></mat-spinner>
-      </div>
-      <div *ngIf="!detailLoading">
-        <div class='not-selected' *ngIf="!selectedTransactionData">
-          <p><b>Click on a transaction to view its details</b></p>
-        </div>
-        <div class="row" *ngIf="selectedTransactionData">
-          <div class="section-header">
-            <p>Transaction Hash</p>
-          </div>
-          <p style="margin-left: 5%;"><b>{{selectedTransactionData.id}}</b></p>
-          <div class="section-header">
-            <p>Details</p>
-          </div>
-          <ul class="list-group" *ngIf="selectedTransactionData">
-            <li class="list-group-item" *ngFor="let item of selectedTransactionData.data | keyvalue">
-              <b>{{ item.key }}:</b> {{ item.value }}
-            </li>
-          </ul>
+<div class="search-bar-container">
+  <div class="search-container">
+    <input type="text" class="search-bar" placeholder="Locate Transaction or Address" [(ngModel)]="searchQuery" [ngClass]="{ 'invalid-input': showErrorMessage }">
+    <button class="search-button" (click)="search()">
+      <i class="fas fa-location-arrow"></i>
+    </button>
+  </div>
+
+  <div class="message-container">
+    <div class="error-msg" *ngIf="showErrorMessage">
+      {{ searchErrorMessage }}
+    </div>
+  
+    <div class="search-status" *ngIf="showStatusMessage">
+      {{ searchStatusMessage }} <mat-spinner [diameter]="20"></mat-spinner>
+    </div>
+  
+    <div class="success-msg" *ngIf="showSuccessMessage">
+      {{ searchSuccessMessage }}
+      <div class="search-results">
+        <div *ngFor="let result of searchResult" class="search-result">
+          {{ result.info }}
         </div>
       </div>
-    </mat-sidenav>
-    <div id="graphContainer" class="graph-container"></div>
-</mat-sidenav-container>
+    </div>
+  </div>
+</div>
 
+<div class="legend">
+  <h5>Node Legend</h5>
+  <div class="legend-item">
+    <div class="utxo-node"></div>
+    <div class="legend-text">Unspent Transaction Output</div>
+  </div>
+  <div class="legend-item">
+    <div class="stxo-node"></div>
+    <div class="legend-text">Spent Transaction Output</div>
+  </div>
+  <div class="legend-item">
+    <div class="group-node"></div>
+    <div class="legend-text">Group</div>
+  </div>
+  <div class="legend-item">
+    <div class="transaction-node"></div>
+    <div class="legend-text">Transaction</div>
+  </div>
+</div>
+
+<div id="graphContainer"></div>
+
+<div id="sequence-bar"></div>
