@@ -37,6 +37,7 @@ import { MdbTooltipModule } from 'mdb-angular-ui-kit/tooltip';
 import { MdbValidationModule } from 'mdb-angular-ui-kit/validation';
 import { ErrorComponent } from './error/error.component';
 import { NgxSkeletonLoaderModule } from 'ngx-skeleton-loader';
+import { ForceGraphComponent } from './force-graph/force-graph.component';
 
 @NgModule({
   declarations: [
@@ -45,6 +46,7 @@ import { NgxSkeletonLoaderModule } from 'ngx-skeleton-loader';
     HomeComponent,
     FraudTransactionListComponent,
     ErrorComponent,
+    ForceGraphComponent,
   ],
   imports: [
     BrowserModule,

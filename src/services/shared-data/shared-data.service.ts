@@ -1,45 +1,27 @@
 import { Injectable } from '@angular/core';
-import { DataRetrievalService } from '../data-retrieval/data-retrieval.service';
+import { BehaviorSubject } from 'rxjs';
 
 @Injectable({
   providedIn: 'root'
 })
 export class SharedDataService {
-  private pathData: any;
-  private originData: any;
-  private destData: any;
+
+  private rawTransactionData: { [key: string]: any } = {};
+  private forceDataSubject = new BehaviorSubject<{ txid: string, nodes: any[], links: any[] }>({ txid: '', nodes: [], links: [] });
+  forceData$ = this.forceDataSubject.asObservable();
 
   constructor(
-    private dataRetrievalService: DataRetrievalService
     ) { }
 
-  setPathData(data: any) {
-    this.pathData = data;
+  public addRawTransaction(transaction: any): void {
+    this.rawTransactionData[transaction.txid] = transaction;
   }
 
-  setOriginData(data: any) {
-    this.originData = data;
-  }
-  
-  setDestData(data: any) {
-    this.destData = data;
+  public getRawTransaction(txid: string) {
+    return this.rawTransactionData[txid];
   }
 
-  getPathData(tx1: string, tx2: string) {
-    // Placeholder (should request from API)
-    const path = {}
-    this.setPathData(path)
-
-    return this.pathData;
-  }
-
-  getOriginData(txid: string) {
-
-
-    return this.originData;
-  }
-
-  getDestData(txid: string) {
-    return this.destData;
+  public setForceData(newForceData: { txid: string, nodes: any[], links: any[] }): void {
+    this.forceDataSubject.next(newForceData);
   }
 }

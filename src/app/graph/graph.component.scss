@@ -57,14 +57,14 @@
 }
 
 .search-bar-container {
+    display: flex;
     position: fixed;
     top: 0;
     left: 0;
-    width: 70%;
+    width: 60%;
     background-color: transparent;
     padding: 10px;
     box-sizing: border-box;
-    display: flex;
     flex-direction: column;
     align-items: flex-start;
 }
@@ -197,14 +197,6 @@
 mat-spinner circle {
     stroke: var(--bitcoin-theme);
 }
-
-.context-menu {
-    position: absolute;
-    background-color: #ffffff;
-    border: 1px solid #cccccc;
-    padding: 5px;
-    box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1);
-}
   
 .menu-item {
     padding: 8px 12px;
@@ -217,8 +209,13 @@ mat-spinner circle {
 
 #context-menu {
     display: none;
+    position: absolute;
+    padding: 5px;
     color: white;
     background-color: black;
+    border: 1px solid #cccccc;
+    box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1);
+    z-index: 9999; 
 }
 
 .loader {
@@ -235,16 +232,27 @@ mat-spinner circle {
     100% { transform: rotate(360deg); }
 }  
 
+#graphWrapper {
+    display: flex;
+    height: 100%;
+}
+
+#treeContainer {
+    position: relative;
+    width: 60%;
+}
+
 #sequence-bar {
     position: fixed;
     bottom: 0;
     left: 0;
-    width: 100%;
+    width: inherit;
     height: 20px;
     background-color: transparent;
     border-top: 2px solid white;
+    overflow-x: clip;
 }
-  
+
 .sequence-marker {
     width: 5px;
     height: 20px;

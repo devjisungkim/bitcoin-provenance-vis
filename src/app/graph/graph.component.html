@@ -6,34 +6,6 @@
   <div class="menu-item" id="menu-item-1">Expand</div>
 </div>
 
-<div class="search-bar-container">
-  <div class="search-container">
-    <input type="text" class="search-bar" placeholder="Locate Transaction or Address" [(ngModel)]="searchQuery" [ngClass]="{ 'invalid-input': showErrorMessage }">
-    <button class="search-button" (click)="search()">
-      <i class="fas fa-location-arrow"></i>
-    </button>
-  </div>
-
-  <div class="message-container">
-    <div class="error-msg" *ngIf="showErrorMessage">
-      {{ searchErrorMessage }}
-    </div>
-  
-    <div class="search-status" *ngIf="showStatusMessage">
-      {{ searchStatusMessage }} <mat-spinner [diameter]="20"></mat-spinner>
-    </div>
-  
-    <div class="success-msg" *ngIf="showSuccessMessage">
-      {{ searchSuccessMessage }}
-      <div class="search-results">
-        <div *ngFor="let result of searchResult" class="search-result">
-          {{ result.info }}
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
 <div class="legend">
   <h5>Node Legend</h5>
   <div class="legend-item">
@@ -54,6 +26,36 @@
   </div>
 </div>
 
-<div id="graphContainer"></div>
-
-<div id="sequence-bar"></div>
+<div id="graphWrapper">
+  <div id="treeContainer">
+    <div id="sequence-bar"></div>
+    <div class="search-bar-container">
+      <div class="search-container">
+        <input type="text" class="search-bar" placeholder="Locate Transaction or Address" [(ngModel)]="searchQuery" [ngClass]="{ 'invalid-input': showErrorMessage }">
+        <button class="search-button" (click)="search()">
+          <i class="fas fa-location-arrow"></i>
+        </button>
+      </div>
+    
+      <div class="message-container">
+        <div class="error-msg" *ngIf="showErrorMessage">
+          {{ searchErrorMessage }}
+        </div>
+      
+        <div class="search-status" *ngIf="showStatusMessage">
+          {{ searchStatusMessage }} <mat-spinner [diameter]="20"></mat-spinner>
+        </div>
+      
+        <div class="success-msg" *ngIf="showSuccessMessage">
+          {{ searchSuccessMessage }}
+          <div class="search-results">
+            <div *ngFor="let result of searchResult" class="search-result">
+              {{ result.info }}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <app-force-graph></app-force-graph>
+</div>

@@ -1,0 +1,12 @@
+#forceContainer {
+    border-left: 3px solid var(--bitcoin-theme);
+}
+
+#viewingInfo {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    width: 35%;
+    height: 30px;
+    font-size: 11px;
+}

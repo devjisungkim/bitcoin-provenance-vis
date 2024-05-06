@@ -5,6 +5,7 @@ import cloneDeep from 'lodash/cloneDeep';
 import { DataRetrievalService } from 'src/services/data-retrieval/data-retrieval.service';
 import { PerformanceService } from 'src/services/performance/performance.service';
 import { DataConversionService } from 'src/services/data-conversion/data-conversion.service';
+import { SharedDataService } from 'src/services/shared-data/shared-data.service';
 
 declare var require: any
 var iso3311a2 = require('../../../node_modules/iso-3166-1-alpha-2')
@@ -36,7 +37,6 @@ export class GraphComponent implements OnInit {
   private zoom: any;
   private uniqueTimeToDepthsMap: Map<string, number[]> = new Map();
   private sequenceMarkers: any[] = [];
-  private realTimeZoomEvent: any;
   searchQuery: string = '';
   showErrorMessage: boolean = false;
   searchErrorMessage: string = '';
@@ -53,48 +53,12 @@ export class GraphComponent implements OnInit {
     private route: ActivatedRoute,
     private dataRetrievalService: DataRetrievalService,
     private dataConversionService: DataConversionService,
+    private sharedDataService: SharedDataService,
     //private performanceService: PerformanceService
   ) {  }
 
   ngOnInit(): void {
-    this.screenWidth = window.innerWidth;
-    this.screenHeight = window.innerHeight; 
-
-    this.route.params.subscribe(async params => {
-      this.graphLoading = true;
-      const rootTxid = params['txid'];
-
-      this.width = this.screenWidth - this.margin.left - this.margin.right;
-      this.height = this.screenHeight - this.margin.top - this.margin.bottom;
-
-      this.svg = d3.selectAll('#graphContainer')
-        .append('svg')
-        .attr('id', 'svg-container')
-        .attr('width', this.screenWidth)
-        .attr('height', this.screenHeight)
-        .attr('viewBox', `-${this.screenWidth/4} -${this.screenHeight/2} ${this.screenWidth} ${this.screenHeight}`)
-        .attr("style", "max-width: 100%; height: auto; user-select: none;");
-      
-      this.g = this.svg.append('g')
-        //.attr("transform", "translate(" + this.width + "," + this.height + ")");
-      
-      this.zoom = d3.zoom()
-        .scaleExtent([0.001, 2])
-        .on("zoom", (event: any) => {
-          this.g.attr("transform", event.transform);
-          this.realTimeZoomEvent = event;
-          this.updateSequenceBar(event);
-        });
-
-      this.svg.call(this.zoom)
-        .call(this.zoom.transform, d3.zoomIdentity.translate(this.width/3, 0).scale(0.2))
-        //.on("dblclick.zoom", null);
-    
-      const initialTransaction = await this.addTransactionsToPath([rootTxid]);
-      this.root = initialTransaction[0];
-      this.initializeTree();
-      this.graphLoading = false;
-    });
+    this.initializeTree();
   }     
 
   private updateSequenceBar(event: any) {
@@ -144,6 +108,8 @@ export class GraphComponent implements OnInit {
     txidList.forEach((txid, index) => {
       const transaction = transactions[index];
       if (transaction) {
+        this.sharedDataService.addRawTransaction(transaction);
+        
         const converted_tx = this.dataConversionService.convertToHierarchy(txid, transaction, parentTxoNode);
         convertedTransactions.push(converted_tx);
       } else {
@@ -155,36 +121,74 @@ export class GraphComponent implements OnInit {
   }
 
   private initializeTree() {
-    this.tree = d3.tree()
+    this.screenWidth = window.innerWidth * 0.6;
+    this.screenHeight = window.innerHeight; 
+
+    this.route.params.subscribe(async params => {
+      this.graphLoading = true;
+      const rootTxid = params['txid'];
+
+      this.width = this.screenWidth - this.margin.left - this.margin.right;
+      this.height = this.screenHeight - this.margin.top - this.margin.bottom;
+
+      this.svg = d3.selectAll('#treeContainer')
+        .append('svg')
+        .attr('id', 'svg-container')
+        .attr('width', this.screenWidth)
+        .attr('height', this.screenHeight)
+        .attr('viewBox', `-${this.screenWidth/4} -${this.screenHeight/2} ${this.screenWidth} ${this.screenHeight}`)
+        .attr("style", "max-width: 100%; height: 100%; user-select: none;");
+      
+      this.g = this.svg.append('g')
+        //.attr("transform", "translate(" + this.width + "," + this.height + ")");
+      
+      this.zoom = d3.zoom()
+        .scaleExtent([0.001, 2])
+        .on("zoom", (event: any) => {
+          this.g.attr("transform", event.transform);
+          this.updateSequenceBar(event);
+        });
+
+      this.svg.call(this.zoom)
+        .call(this.zoom.transform, d3.zoomIdentity.translate(this.width/3, 0).scale(0.4))
+        //.on("dblclick.zoom", null);
+    
+      const initialTransaction = await this.addTransactionsToPath([rootTxid]);
+      this.root = initialTransaction[0];
+      this.dataConversionService.updateForceData(rootTxid);
+
+      this.tree = d3.tree()
                   .nodeSize([250, 200])
                   .separation((a, b) => {
                     return a.parent === b.parent ? 1.25 : 1.25;
                   });
 
-    this.gLink = this.g.append("g")
-      .attr('id', "link-group")
-      .attr("cursor", "pointer")
-      .attr("pointer-events", "all"); 
-      
-    this.gNode = this.g.append('g')
-      .attr('id', "node-group") 
-      .attr("fill", "none")
-      .attr("stroke", "white")
-      .attr("stroke-opacity", 0.4)
-      .attr("stroke-width", 1.5);
+      this.gLink = this.g.append("g")
+        .attr('id', "link-group")
+        .attr("cursor", "pointer")
+        .attr("pointer-events", "all"); 
+        
+      this.gNode = this.g.append('g')
+        .attr('id', "node-group") 
+        .attr("fill", "none")
+        .attr("stroke", "white")
+        .attr("stroke-opacity", 0.4)
+        .attr("stroke-width", 1.5);
 
-    this.root.x0 = 0;
-    this.root.y0 = 0;
+      this.root.x0 = 0;
+      this.root.y0 = 0;
 
-    // Expand all nodes
-    this.root.descendants().forEach((d: any) => {
-      if (d._children) {
-        d.children = d._children;
-        d._children = null;
-      }
+      // Expand all nodes
+      this.root.descendants().forEach((d: any) => {
+        if (d._children) {
+          d.children = d._children;
+          d._children = null;
+        }
+      });
+
+      this.updateTree(this.root)
+      this.graphLoading = false;
     });
-
-    this.updateTree(this.root)
   }
 
   private updateTree(expandingSource: any, closingSource: any = undefined) {
@@ -229,7 +233,6 @@ export class GraphComponent implements OnInit {
     this.renderLinks(expandingSource, closingSource);
     this.renderNodes(expandingSource, closingSource);
     this.renderAdditionalGraphElements(expandingSource, closingSource);
-    this.updateSequenceBar(this.realTimeZoomEvent);
   }
 
   private positionRelativeToTime() {
@@ -396,9 +399,6 @@ export class GraphComponent implements OnInit {
         const y = closingSource && d.data.txid.includes('group') ? closingSource.y0 : expandingSource.y0;
         return "translate(" + y + "," + x + ")";
       })
-      .on('click', (event: any, d: any) => {
-        console.log(d);
-      })
       .on("mouseenter", (event: any, d: any) => {
         this.mouseenterHighlight(event, d);
       })
@@ -486,7 +486,7 @@ export class GraphComponent implements OnInit {
 
     txoNodesEnter
       .append("text")
-      .attr('class', 'txoAddress')
+      .attr('class', 'txoInfo')
       .style("fill", "white")
       .style("font-size", "12px")
       .attr("text-anchor", "middle")
@@ -518,7 +518,7 @@ export class GraphComponent implements OnInit {
       .attr("ry", 6)
       .attr("stroke-width", 3)
       .attr("stroke-opacity", "1")
-      .attr("stroke", 'var(--bitcoin-theme')
+      .attr("stroke", 'var(--bitcoin-theme)')
       .attr("width", 150) 
       .attr("height", 200)
       .attr("x", -75)
@@ -542,6 +542,10 @@ export class GraphComponent implements OnInit {
         return `TXID: ${d.data.txid}`;
       })
 
+    transactionNodesEnter.on("click", (event: any, d: any) => {
+      this.dataConversionService.updateForceData(d.data.txid);
+    });
+    
     const groupNodesEnter = nodeEnter.filter((d: any) => d.data.txid.includes('group'));
 
     groupNodesEnter.on("dblclick", (event: any, d: any) => {

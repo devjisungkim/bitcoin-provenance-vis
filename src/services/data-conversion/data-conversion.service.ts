@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import * as d3 from 'd3';
 import { DataRetrievalService } from '../data-retrieval/data-retrieval.service';
+import { SharedDataService } from '../shared-data/shared-data.service';
 
 declare var require: any
 var iso3311a2 = require('../../../node_modules/iso-3166-1-alpha-2')
@@ -16,17 +17,9 @@ export class DataConversionService {
   private totalNumTransactionsRetrieved: number = -1; // -1 to exclude root transaction
 
   constructor(
-    private dataRetrievalService: DataRetrievalService
+    private dataRetrievalService: DataRetrievalService,
+    private sharedDataService: SharedDataService
   ) { }
-
-  private randomGenerateVinGeolocation(transaction: any): any {
-    const geolocationsCandidates = ['AU', 'NZ', 'GB', 'US'];
-    for (const vin of transaction.vin) {
-      const randomGeo =  Math.floor(Math.random() * geolocationsCandidates.length);
-      vin.geolocation = geolocationsCandidates[randomGeo];
-    }
-    return transaction;
-  }
 
   public convertToHierarchy(txid: string, transaction: any, parentTxo: any = null) {
     if (this.dataRetrievalService.url !== 'http://localhost:5000/api/') {
@@ -376,5 +369,69 @@ export class DataConversionService {
 
   public getThreshold() {
     return this.threshold;
+  }
+
+  public updateForceData(txid: string): void {
+    const rawTransaction = this.sharedDataService.getRawTransaction(txid);
+
+    let uniqueTxoIdCounter = 0;
+    const transactionHierarchy: any = {
+      txid: rawTransaction.txid,
+      children: []
+    }
+    
+    for (const vin of rawTransaction.vin) {
+      const { txid, ...otherFields } = vin;
+      const child = {
+        txid: 'txo' + txid + uniqueTxoIdCounter,
+        type: 'vin',
+        ...otherFields,
+        tx_from: txid,
+        displayData: {
+          "Address": vin.address,
+          "Fraud Probability": (vin.supervised_alert_probability * 100).toFixed(2) + '%',
+          "Geolocation": iso3311a2.getCountry(vin.geolocation),
+          "Value": vin.value + 'BTC',
+          "Transaction Type": vin.Transaction_type
+        }
+      };
+      transactionHierarchy.children.push(child);
+      uniqueTxoIdCounter += 1;
+    }
+
+    for (const vout of rawTransaction.vout) {
+      const child = {
+        txid: 'txo' + txid + uniqueTxoIdCounter,
+        type: 'vout',
+        ...vout,
+        displayData: {
+          "Address": vout.address,
+          "Geolocation": iso3311a2.getCountry(vout.geolocation),
+          "Value": vout.value + 'BTC',
+          "Transaction Type": vout.Transaction_type
+        }
+      };
+      transactionHierarchy.children.push(child);
+      uniqueTxoIdCounter += 1;
+    } 
+
+    const d3TransactionHierarchy = this.convertToD3Hierarchy(transactionHierarchy);
+
+    const newForceData: { txid: string, nodes: any[], links: any[] } = {
+      txid: txid,
+      nodes: d3TransactionHierarchy.descendants(),
+      links: d3TransactionHierarchy.links()
+    }
+
+    this.sharedDataService.setForceData(newForceData);
+  }
+
+  private randomGenerateVinGeolocation(transaction: any): any {
+    const geolocationsCandidates = ['AU', 'NZ', 'GB', 'US'];
+    for (const vin of transaction.vin) {
+      const randomGeo =  Math.floor(Math.random() * geolocationsCandidates.length);
+      vin.geolocation = geolocationsCandidates[randomGeo];
+    }
+    return transaction;
   }
 }
