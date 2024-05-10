@@ -1,4 +1,5 @@
 #forceContainer {
+    position: relative;
     border-left: 3px solid var(--bitcoin-theme);
 }
 
@@ -6,7 +7,33 @@
     position: fixed;
     right: 0;
     bottom: 0;
-    width: 35%;
+    width: 37.5%;
     height: 30px;
     font-size: 11px;
+    display: flex;
+    align-items: center;
 }
+
+#valueForm {
+    position: fixed;
+    right: 0;
+    width: 37.5%;
+    margin-top: 20px;
+    button {
+        font-size: 12px;
+    }
+}
+
+.input-group {
+    display: flex;
+    align-items: center;
+    flex: 1;
+}
+
+.input-group {
+    label, input{
+        font-size: 12px;
+        margin-right: 5px;
+    }
+}
+

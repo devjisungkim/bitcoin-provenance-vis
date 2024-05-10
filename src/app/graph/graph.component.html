@@ -7,22 +7,24 @@
 </div>
 
 <div class="legend">
-  <h5>Node Legend</h5>
-  <div class="legend-item">
-    <div class="utxo-node"></div>
-    <div class="legend-text">Unspent Transaction Output</div>
-  </div>
-  <div class="legend-item">
-    <div class="stxo-node"></div>
-    <div class="legend-text">Spent Transaction Output</div>
-  </div>
-  <div class="legend-item">
-    <div class="group-node"></div>
-    <div class="legend-text">Group</div>
-  </div>
-  <div class="legend-item">
-    <div class="transaction-node"></div>
-    <div class="legend-text">Transaction</div>
+  <h5 (click)="toggleLegend()">Node Legend <span>{{ isLegendOpen ? '-' : '+' }}</span></h5>
+  <div class="legend-items" [ngClass]="{ 'active': isLegendOpen }">
+    <div class="legend-item">
+      <div class="utxo-node"></div>
+      <div class="legend-text">Unspent Transaction Output</div>
+    </div>
+    <div class="legend-item">
+      <div class="stxo-node"></div>
+      <div class="legend-text">Spent Transaction Output</div>
+    </div>
+    <div class="legend-item">
+      <div class="group-node"></div>
+      <div class="legend-text">Group</div>
+    </div>
+    <div class="legend-item">
+      <div class="transaction-node"></div>
+      <div class="legend-text">Transaction</div>
+    </div>
   </div>
 </div>
 
