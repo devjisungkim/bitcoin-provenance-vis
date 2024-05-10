@@ -12,11 +12,11 @@ Before you begin, please make sure you have the following software installed on 
 
 1. **Clone the Repository**: Start by cloning this repository to your local machine. You can do this by running the following command:
 
-```git clone https://github.com/devjisungkim/capstone-ai-vis.git```
+```git clone https://github.com/omarjarkas1997/catching-cyber-criminal-group-1```
 
 2. **Navigate to the Project Folder**: Change your working directory to the project folder with the following command:
 
-```cd capstone-ai-vis```
+```cd Jisung```
 
 3. **Install Dependencies**: Install the project dependencies by running:
 
