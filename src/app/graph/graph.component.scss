@@ -9,6 +9,15 @@
     z-index: 1000;
 }
 
+.legend-items {
+    display: none;
+}
+  
+.legend-items.active {
+    display: block;
+}
+  
+
 .legend-item {
     display: flex;
     align-items: center;
@@ -70,25 +79,28 @@
 }
   
 .search-container {
+    position: relative;
     display: flex;
     align-items: center;
-    width: 100%;
+    width: 80%;
 }
   
 .search-bar {
+    flex: 1;
     width: 100%;
     padding: 8px;
     border: none;
     border-radius: 4px;
     margin-bottom: 5px;
+    position: relative;
 }
   
 .search-button {
     position: absolute;
-    right: 12px;
-    top: 12px;
+    right: 0;
+    top: 4px;
     padding: 8px;
-    background-color: white;
+    background-color: transparent;
     color: black;
     border: none;
     border-radius: 4px;
@@ -105,8 +117,8 @@
 .message-container {
     display: flex;
     left: 0;
-    width: 100%;
-    background-color: black;
+    width: 80%;
+    background-color: white;
     z-index: 1;
     max-height: 200px;
     overflow-y: auto;

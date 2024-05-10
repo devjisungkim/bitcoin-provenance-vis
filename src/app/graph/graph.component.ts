@@ -37,6 +37,7 @@ export class GraphComponent implements OnInit {
   private zoom: any;
   private uniqueTimeToDepthsMap: Map<string, number[]> = new Map();
   private sequenceMarkers: any[] = [];
+  private realTimeZoomEvent: any;
   searchQuery: string = '';
   showErrorMessage: boolean = false;
   searchErrorMessage: string = '';
@@ -48,6 +49,7 @@ export class GraphComponent implements OnInit {
   searchResult: any[] = [];
   transactionDetail: any;
   graphLoading: boolean = false;
+  isLegendOpen: boolean = false;
 
   constructor( 
     private route: ActivatedRoute,
@@ -146,6 +148,7 @@ export class GraphComponent implements OnInit {
         .scaleExtent([0.001, 2])
         .on("zoom", (event: any) => {
           this.g.attr("transform", event.transform);
+          this.realTimeZoomEvent = event;
           this.updateSequenceBar(event);
         });
 
@@ -233,6 +236,7 @@ export class GraphComponent implements OnInit {
     this.renderLinks(expandingSource, closingSource);
     this.renderNodes(expandingSource, closingSource);
     this.renderAdditionalGraphElements(expandingSource, closingSource);
+    this.updateSequenceBar(this.realTimeZoomEvent);
   }
 
   private positionRelativeToTime() {
@@ -1290,5 +1294,9 @@ export class GraphComponent implements OnInit {
             ${ex - sc * xrvs}  ${ey}
           L ${ex} ${ey}
     `;
+  }
+
+  toggleLegend() {
+    this.isLegendOpen = !this.isLegendOpen;
   }
 }

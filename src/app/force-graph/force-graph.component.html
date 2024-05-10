@@ -2,4 +2,11 @@
     <div id="viewingInfo">
         Viewing: {{ viewingTransaction }}
     </div>
+    <form (ngSubmit)="updateForce()" id="valueForm">
+        <div class="input-group">
+            <label for="minCalueThreshold">Min BTC Value To Display:</label>
+            <input type="text" [(ngModel)]="minValueThreshold" name="valueThreshold" placeholder="Enter BTC Value" min="0" step="1">
+        </div>
+        <button type="submit">Update</button>
+    </form>
 </div>

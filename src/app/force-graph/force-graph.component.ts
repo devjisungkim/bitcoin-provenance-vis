@@ -1,5 +1,6 @@
 import { Component, OnDestroy, OnInit, ViewEncapsulation } from '@angular/core';
 import * as d3 from 'd3';
+import cloneDeep from 'lodash/cloneDeep';
 import { Subscription } from 'rxjs';
 import { SharedDataService } from 'src/services/shared-data/shared-data.service';
 
@@ -17,6 +18,7 @@ export class ForceGraphComponent implements OnInit, OnDestroy {
   private g: any;
   private zoom: any;
   private simulation: any;
+  private forceData: any;
   private links: any;
   private nodes: any;
   private width: any;
@@ -27,6 +29,7 @@ export class ForceGraphComponent implements OnInit, OnDestroy {
   private forceDataSubscription: Subscription | undefined;
 
   viewingTransaction: string = '';
+  minValueThreshold: string = '0.00000001'; // one satoshi
 
   constructor(
     private sharedDataService: SharedDataService,
@@ -61,18 +64,7 @@ export class ForceGraphComponent implements OnInit, OnDestroy {
     this.svg.call(this.zoom)
       .call(this.zoom.transform, d3.zoomIdentity.translate(this.width/2, 0).scale(0.5))
 
-    this.forceDataSubscription = this.sharedDataService.forceData$.subscribe(newForceData => {
-      if (this.nodes !== newForceData.nodes && newForceData.nodes.length > 0) {
-        this.viewingTransaction = newForceData.txid;
-        this.nodes = newForceData.nodes;
-        this.links = newForceData.links;
-        this.updateForce();
-      }
-    });
-  }
-
-  private updateForce(): void {
-    this.simulation = d3.forceSimulation()
+      this.simulation = d3.forceSimulation()
       .force("link", d3.forceLink().id((d: any) => d.id).distance(300))
       .force('charge', d3.forceManyBody().strength(-400))
       .force('center', d3.forceCenter(0, 0))
@@ -97,12 +89,29 @@ export class ForceGraphComponent implements OnInit, OnDestroy {
           .attr('transform', (d: any) => `translate(${d.x},${d.y})`);
       });
 
+    this.forceDataSubscription = this.sharedDataService.forceData$.subscribe(newForceData => {
+      if (this.viewingTransaction !== newForceData.txid) {
+        this.viewingTransaction = newForceData.txid;
+        this.forceData = newForceData;
+        this.updateForce();
+      }
+    });
+  }
+
+  updateForce(): void {
+    if (Number(this.minValueThreshold) <= 0) {
+      alert("Please enter a valid non-negative integer value.");
+      return;
+    }
+
+    this.nodes = this.forceData.nodes.filter((d: any) => !d.data.txid.includes('txo') || d.data.value >= this.minValueThreshold);
+    this.links = this.forceData.links.filter((d: any) => d.target.data.value >= this.minValueThreshold);
+
     this.simulation.nodes(this.nodes);
     this.simulation.force("link").links(this.links);
     this.simulation.alpha(1).restart();
 
     this.clusterNodes();
-
     this.renderLinks();
     this.renderNodes();
   }
@@ -118,16 +127,16 @@ export class ForceGraphComponent implements OnInit, OnDestroy {
 
     this.nodes.forEach((node: any) => {
       if (node.data.txid.includes('txo')) {
-          const address = node.data.address;
-          if (!clustersMap.has(address)) {
-              clustersMap.set(address, { x: 0, y: 0, count: 0 });
-          }
-          const cluster = clustersMap.get(address);
-          if (cluster) {
-              cluster.x += node.x;
-              cluster.y += node.y;
-              cluster.count++;
-          }
+        const address = node.data.address;
+        if (!clustersMap.has(address)) {
+          clustersMap.set(address, { x: 0, y: 0, count: 0 });
+        }
+        const cluster = clustersMap.get(address);
+        if (cluster) {
+          cluster.x += node.x;
+          cluster.y += node.y;
+          cluster.count++;
+        }
       }
     });
 
@@ -136,22 +145,24 @@ export class ForceGraphComponent implements OnInit, OnDestroy {
       cluster.y /= cluster.count;
     });
 
+    console.log(clustersMap)
+
     const repulsionStrength = 0.1;
     const desiredDistanceBetweenClusters = 100;
 
     clustersMap.forEach((clusterA, addressA) => {
       clustersMap.forEach((clusterB, addressB) => {
-          if (addressA !== addressB) {
-              const dx = clusterB.x - clusterA.x;
-              const dy = clusterB.y - clusterA.y;
-              const distanceSq = dx * dx + dy * dy;
-              const distance = Math.sqrt(distanceSq);
-              if (distance !== 0) {
-                  const repulsionForce = (distance - (desiredDistanceBetweenClusters)) / distance * repulsionStrength;
-                  clusterA.x += dx / distance * repulsionForce;
-                  clusterA.y += dy / distance * repulsionForce;
-              }
+        if (addressA !== addressB) {
+          const dx = clusterB.x - clusterA.x;
+          const dy = clusterB.y - clusterA.y;
+          const distanceSq = dx * dx + dy * dy;
+          const distance = Math.sqrt(distanceSq);
+          if (distance !== 0) {
+              const repulsionForce = (distance - (desiredDistanceBetweenClusters)) / distance * repulsionStrength;
+              clusterA.x += dx / distance * repulsionForce;
+              clusterA.y += dy / distance * repulsionForce;
           }
+        }
       });
     });
 
@@ -176,7 +187,6 @@ export class ForceGraphComponent implements OnInit, OnDestroy {
   }
 
   private renderNodes() {
-    // Drag functions
     const dragstarted = (event: any, d: any) => {
       if (!event.active) this.simulation.alphaTarget(0.3).restart();
       d.fx = d.x;
@@ -270,7 +280,7 @@ export class ForceGraphComponent implements OnInit, OnDestroy {
   }
 
   private renderLinks() {
-    const links = this.g.selectAll(".link").data(this.links, (d: any) => d.target.id);
+    const links = this.g.selectAll(".link").data(this.links, (d: any) => d.target.data.txid);
 
     const linksEnter = links
       .enter()
