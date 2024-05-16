@@ -56,7 +56,7 @@ export class ForceGraphComponent implements OnInit, OnDestroy {
     this.g = this.svg.append('g')
 
     this.zoom = d3.zoom()
-      .scaleExtent([0.5, 2])
+      .scaleExtent([0.05, 2])
       .on("zoom", (event: any) => {
         this.g.attr("transform", event.transform);
       });
@@ -65,10 +65,11 @@ export class ForceGraphComponent implements OnInit, OnDestroy {
       .call(this.zoom.transform, d3.zoomIdentity.translate(this.width/2, 0).scale(0.5))
 
       this.simulation = d3.forceSimulation()
-      .force("link", d3.forceLink().id((d: any) => d.id).distance(300))
-      .force('charge', d3.forceManyBody().strength(-400))
+      .force("link", d3.forceLink().id((d: any) => d.id).distance(500))
+      .force('charge', d3.forceManyBody().strength(-20))
       .force('center', d3.forceCenter(0, 0))
       .on('tick', () => {
+        //this.clusterNodes();
         this.g.selectAll(".link line")
           .attr('x1', (d: any) => d.source.x)
           .attr('y1', (d: any) => d.source.y)
@@ -98,7 +99,7 @@ export class ForceGraphComponent implements OnInit, OnDestroy {
     });
   }
 
-  updateForce(): void {
+  updateForce() {
     if (Number(this.minValueThreshold) <= 0) {
       alert("Please enter a valid non-negative integer value.");
       return;
@@ -106,6 +107,20 @@ export class ForceGraphComponent implements OnInit, OnDestroy {
 
     this.nodes = this.forceData.nodes.filter((d: any) => !d.data.txid.includes('txo') || d.data.value >= this.minValueThreshold);
     this.links = this.forceData.links.filter((d: any) => d.target.data.value >= this.minValueThreshold);
+
+    const allTxoNodesValue = this.forceData.nodes.filter((node: any) => node.data.txid.includes('txo')).map((node: any) => node.data.value);
+    const minValue = Math.min(...allTxoNodesValue);
+    const maxValue = Math.max(...allTxoNodesValue);
+    const minRadius = 10;
+    const maxRadius = 100;
+    const valueRange = maxValue - minValue;
+    const radiusRange = maxRadius - minRadius;
+
+    this.nodes.forEach((d: any) => {
+      const valuePos = (d.data.value - minValue) / valueRange;
+      const radius = radiusRange * valuePos + minRadius;
+      d.data.radius = radius;
+    });
 
     this.simulation.nodes(this.nodes);
     this.simulation.force("link").links(this.links);
@@ -116,74 +131,57 @@ export class ForceGraphComponent implements OnInit, OnDestroy {
     this.renderNodes();
   }
 
-  private clusterNodes() {
-    interface Cluster {
-      x: number;
-      y: number;
-      count: number;
+  private clusterNodes() {  
+    const coords: { [key: string]: { x: number, y: number }[] } = {};
+    const groups: any[] = [];
+
+    this.nodes.forEach((d: any) => {
+      if (groups.indexOf(d.data.address) == -1) {
+        groups.push(d.data.address);
+        coords[d.data.address] = [];
+      }
+      coords[d.data.address].push({ x: d.x, y: d.y });  
+    })
+    
+    const centroids: { [key: string]: { x: number, y: number } } = {};
+
+    for (let group in coords) {
+      const groupNodes = coords[group];
+      const n = groupNodes.length;
+      let cx = 0;
+      let tx = 0;
+      let cy = 0;
+      let ty = 0;
+
+      groupNodes.forEach((d: any) => {
+        tx += d.x;
+        ty += d.y;
+      })
+  
+      cx = tx/n;
+      cy = ty/n;
+  
+      centroids[group] = { x: cx, y: cy }   
     }
 
-    const clustersMap = new Map<string, Cluster>();
+    const minDistance = 1;
 
-    this.nodes.forEach((node: any) => {
-      if (node.data.txid.includes('txo')) {
-        const address = node.data.address;
-        if (!clustersMap.has(address)) {
-          clustersMap.set(address, { x: 0, y: 0, count: 0 });
-        }
-        const cluster = clustersMap.get(address);
-        if (cluster) {
-          cluster.x += node.x;
-          cluster.y += node.y;
-          cluster.count++;
-        }
+    this.nodes.forEach((d: any) => {
+      let cx = centroids[d.data.address].x;
+      let cy = centroids[d.data.address].y;
+      let x = d.x;
+      let y = d.y;
+      let dx = cx - x;
+      let dy = cy - y;
+  
+      let r = Math.sqrt(dx*dx+dy*dy)
+  
+      if (r>minDistance) {
+        d.x = x * 0.9 + cx * 0.1;
+        d.y = y 
+        * 0.9 + cy * 0.1;
       }
     });
-
-    clustersMap.forEach((cluster, address) => {
-      cluster.x /= cluster.count;
-      cluster.y /= cluster.count;
-    });
-
-    console.log(clustersMap)
-
-    const repulsionStrength = 0.1;
-    const desiredDistanceBetweenClusters = 100;
-
-    clustersMap.forEach((clusterA, addressA) => {
-      clustersMap.forEach((clusterB, addressB) => {
-        if (addressA !== addressB) {
-          const dx = clusterB.x - clusterA.x;
-          const dy = clusterB.y - clusterA.y;
-          const distanceSq = dx * dx + dy * dy;
-          const distance = Math.sqrt(distanceSq);
-          if (distance !== 0) {
-              const repulsionForce = (distance - (desiredDistanceBetweenClusters)) / distance * repulsionStrength;
-              clusterA.x += dx / distance * repulsionForce;
-              clusterA.y += dy / distance * repulsionForce;
-          }
-        }
-      });
-    });
-
-    const clusterForce = (clusters: Map<string, Cluster>, strength: number) => {
-      return (alpha: number) => {
-          this.nodes.forEach((node: any) => {
-              if (node.data.txid.includes('txo')) {
-                  const cluster = clusters.get(node.data.address);
-                  if (cluster) {
-                      // Attraction towards cluster center
-                      node.vx += (cluster.x - node.x) * alpha * strength;
-                      node.vy += (cluster.y - node.y) * alpha * strength;
-                  }
-              }
-          });
-      };
-    };
-
-    const strength = 0.2;
-
-    this.simulation.force('cluster', clusterForce(clustersMap, strength));
   }
 
   private renderNodes() {
@@ -228,11 +226,7 @@ export class ForceGraphComponent implements OnInit, OnDestroy {
       .append('circle')
       .attr('stroke', 'none')
       .attr("stroke-opacity", "1")
-      .attr("r", (d: any) => {
-        const ceilValue = Math.max(10, Math.ceil(d.data.value));
-        d.data.radius = Math.min(40, ceilValue);
-        return d.data.radius;
-      })
+      .attr("r", (d: any) => d.data.radius)
       .attr("fill", (d: any) => {
         if (d.data.type === 'vout') {
           return d.data.is_utxo ? 'green' : 'red';

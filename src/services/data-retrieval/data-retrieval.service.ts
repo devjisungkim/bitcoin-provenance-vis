@@ -19,20 +19,16 @@ export class DataRetrievalService {
     private http: HttpClient
     ) {  }
 
-  private requestTransaction(txid: string): Observable<any> {
-    /*
+  private requestTransaction(txid: string, unixTime: number | undefined = undefined): Observable<any> {
     const jsonURL = `${this.url}get_transaction`;
-    return this.http.get(jsonURL, { headers: this.headers, params: { transaction_id: txid } })
-    */
-    
-    const jsonURL = `${this.url}getTransaction/${txid}`;
-    return this.http.get(jsonURL, { headers: this.headers });
-    
+    const params: any = { transaction_id: txid };
+    if (this.url === "http://localhost:5000/api/" && unixTime) params.unix_time = unixTime;
+    return this.http.get(jsonURL, { headers: this.headers, params: params })
   }
 
-  public getTransactions(txidList: string[]): Observable<any[]> {
+  public getTransactions(txidList: string[], unixTime: number | undefined = undefined): Observable<any[]> {
     const observables = txidList.map(txid => {
-      return this.requestTransaction(txid).pipe(
+      return this.requestTransaction(txid, unixTime).pipe(
         map((response: any) => response)
       );
     });

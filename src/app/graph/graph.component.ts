@@ -61,7 +61,7 @@ export class GraphComponent implements OnInit {
 
   ngOnInit(): void {
     this.initializeTree();
-  }     
+  }
 
   private updateSequenceBar(event: any) {
     const sequenceBar = d3.select('#sequence-bar');
@@ -99,8 +99,9 @@ export class GraphComponent implements OnInit {
     }
   }
 
-  private async addTransactionsToPath(txidList: string[], parentTxoNode: any = null): Promise<any[]> {
-    const transactions: any[] | undefined = await this.dataRetrievalService.getTransactions(txidList).toPromise();
+  private async addTransactionsToPath(txidList: string[], parentTxoNode: any = null): Promise<any[] | undefined> {
+    const unixTime = parentTxoNode ? parentTxoNode.parent.data.time : undefined;
+    const transactions: any[] | undefined = await this.dataRetrievalService.getTransactions(txidList, unixTime).toPromise();
     const convertedTransactions: any[] = [];
 
     if (transactions === undefined) {
@@ -111,15 +112,15 @@ export class GraphComponent implements OnInit {
       const transaction = transactions[index];
       if (transaction) {
         this.sharedDataService.addRawTransaction(transaction);
-        
+      
         const converted_tx = this.dataConversionService.convertToHierarchy(txid, transaction, parentTxoNode);
         convertedTransactions.push(converted_tx);
       } else {
         console.error(`Transaction data missing for txid: ${txid}`);
       }
     })
-
-    return convertedTransactions;
+    
+    return convertedTransactions.length > 0 ? convertedTransactions : undefined;
   }
 
   private initializeTree() {
@@ -128,6 +129,7 @@ export class GraphComponent implements OnInit {
 
     this.route.params.subscribe(async params => {
       this.graphLoading = true;
+    
       const rootTxid = params['txid'];
 
       this.width = this.screenWidth - this.margin.left - this.margin.right;
@@ -157,7 +159,7 @@ export class GraphComponent implements OnInit {
         //.on("dblclick.zoom", null);
     
       const initialTransaction = await this.addTransactionsToPath([rootTxid]);
-      this.root = initialTransaction[0];
+      this.root = initialTransaction !== undefined ? initialTransaction[0] : console.error("graph not avilable");
       this.dataConversionService.updateForceData(rootTxid);
 
       this.tree = d3.tree()
@@ -389,7 +391,7 @@ export class GraphComponent implements OnInit {
     d3.select("body").on("click", () => {
       contextMenu.style("display", "none");
     });
-
+    
     const nodes = this.gNode.selectAll("g.node").data(this.nodes, (d: any) => d.id || (d.id = d.data.txid));
 
     const nodeEnter = nodes
@@ -403,6 +405,7 @@ export class GraphComponent implements OnInit {
         const y = closingSource && d.data.txid.includes('group') ? closingSource.y0 : expandingSource.y0;
         return "translate(" + y + "," + x + ")";
       })
+      .on("click", (event: any, d: any) => console.log(d))
       .on("mouseenter", (event: any, d: any) => {
         this.mouseenterHighlight(event, d);
       })
@@ -433,17 +436,20 @@ export class GraphComponent implements OnInit {
         contextMenu.select(".menu-item").on("click", async () => {
           d3.selectAll(`.loader-${d.data.txid} .loader`).style("display", "block");
 
-          const transactionsRetrieved = await this.addTransactionsToPath(d.data.vinTxids, d);
+          const uniqueVinTxids: string[] = [...new Set<string>(d.data.vinTxids)];
+          const transactionsRetrieved = await this.addTransactionsToPath(uniqueVinTxids, d);
 
-          await Promise.all(transactionsRetrieved.map(async (transaction: any) => {
-            transaction.parent = d;
-            transaction.depth = d.depth + 1;
-    
-            await Promise.all(transaction.children.map(async (output: any) => {
-                output.parent = transaction;
-                output.depth = transaction.depth + 1;
+          if (transactionsRetrieved !== undefined) {
+            await Promise.all(transactionsRetrieved.map(async (transaction: any) => {
+              transaction.parent = d;
+              transaction.depth = d.depth + 1;
+      
+              await Promise.all(transaction.children.map(async (output: any) => {
+                  output.parent = transaction;
+                  output.depth = transaction.depth + 1;
+              }));
             }));
-          }));
+          }
 
           d.children = transactionsRetrieved;
 
@@ -545,7 +551,7 @@ export class GraphComponent implements OnInit {
       .html(function(d: any) {
         return `TXID: ${d.data.txid}`;
       })
-
+    
     transactionNodesEnter.on("click", (event: any, d: any) => {
       this.dataConversionService.updateForceData(d.data.txid);
     });
@@ -803,7 +809,7 @@ export class GraphComponent implements OnInit {
     }
   }
 
-  private renderLinks(expandingSource: any, closingSource: any) {
+  private renderLinks(expandingSource: any, closingSource: any) { 
     const link = this.gLink.selectAll('path.link').data(this.links, (d: any) => d.id);
 
     const linkEnter = link.enter()
@@ -858,6 +864,7 @@ export class GraphComponent implements OnInit {
   }
 
   private renderAdditionalGraphElements(expandingSource: any, closingSource: any) {
+    
     const manualLink = this.gLink.selectAll(".manual-link").data(this.duplicateTxPairs.filter((d: any) => !d.initial));
 
     const manualLinkEnter = manualLink.enter()
@@ -867,7 +874,7 @@ export class GraphComponent implements OnInit {
       .attr("d", (d: any) => {
         const x = closingSource && d.target.data.txid.includes('group') ? closingSource.x0 : expandingSource.x0;
         const y = closingSource && d.target.data.txid.includes('group') ? closingSource.y0 : expandingSource.y0;
-        const pathString = `M${y},${x} H${y + 85} L${y - 85},${x} H${y}`;
+        const pathString = `M${y},${x} H${y - 85} L${y + 85},${x} H${y}`;
         return pathString;
       });
 
@@ -880,7 +887,7 @@ export class GraphComponent implements OnInit {
       .attr("d", (d: any) => {
         const source = { x: d.source.x, y: d.source.y };
         const target = { x: d.target.x, y: d.target.y };
-        const pathString = `M${source.y},${source.x} H${source.y + 85} L${target.y - 85},${target.x} H${target.y}`;
+        const pathString = `M${source.y},${source.x} H${source.y - 85} L${target.y + 85},${target.x} H${target.y}`;
         return pathString;
       })
       .attr("stroke", "var(--bitcoin-theme)")
@@ -894,10 +901,11 @@ export class GraphComponent implements OnInit {
       .attr("d", (d: any) => {
         const x = closingSource && !d.target.data.txid.includes('group') ? closingSource.x : expandingSource.x;
         const y = closingSource && !d.target.data.txid.includes('group') ? closingSource.y : expandingSource.y;
-        const pathString = `M${y},${x} H${y + 85} L${y - 85},${x} H${y}`;
+        const pathString = `M${y},${x} H${y - 85} L${y + 85},${x} H${y}`;
         return pathString;
       })
       .remove()
+    
 
     const createLinkTextArrow = (linkData: any, i: number) => {
       const linkTextAndArrow = this.gLink.selectAll('.link-text-group'+i).data(linkData, (d: any) => d.target.id);
@@ -953,11 +961,11 @@ export class GraphComponent implements OnInit {
               };
             return `translate(${translateX}px, ${translateY}px) rotate(${rotateDeg}deg) translateY(-30px)`;
           } else {
-            const angle = Math.atan2(d.target.y - d.source.y - 85 * 2, d.target.x - d.source.x) * (180 / Math.PI);
+            const angle = Math.atan2(d.target.y - d.source.y + 85 * 2, d.target.x - d.source.x) * (180 / Math.PI);
             const minTranslateX = -15;
             const maxTranslateX = -5;
-            const translateXOffset = (angle - 0) * (maxTranslateX - minTranslateX) / (90 - 0) + minTranslateX;
-            rotateDeg = 90 + (90 - angle);
+            const translateXOffset = (angle - 0) * (maxTranslateX - minTranslateX) / (270 - 0) + minTranslateX;
+            rotateDeg = 270 + (90 - angle);
             return `translate(${translateX}px, ${translateY}px) rotate(${rotateDeg}deg) translate(${translateXOffset}px, -30px)`;
           }
         });
@@ -975,36 +983,35 @@ export class GraphComponent implements OnInit {
     }
 
     createLinkTextArrow(this.root.links(), 1)
-    createLinkTextArrow(this.duplicateTxPairs.filter((d: any) => !d.initial), 2)
+    //createLinkTextArrow(this.duplicateTxPairs.filter((d: any) => !d.initial), 2)
   }
 
   private detectMutualChildInTransactions() {
-    const nodePairs: { source: any, target: any, initial: boolean }[] = []
-    const nodeUniqueMap = new Map()
-
-    const transactionHierarchy = this.root.descendants().filter((d: any) => d.parent && !['group', 'txo', 'hidden'].some(keyword => d.data.txid.includes(keyword)));
+    const nodePairs: { source: any, target: any, initial: boolean }[] = [];
+    const nodeUniqueMap = new Map();
+    const transactions = this.root.descendants().filter((d: any) => d.parent && !['group', 'txo', 'hidden'].some(keyword => d.data.txid.includes(keyword)));
     
-    transactionHierarchy.forEach((d: any) => {
-      const id = d.data.txid;
-      if (!nodeUniqueMap.has(id)) {
-        nodeUniqueMap.set(id, d);
+    transactions.forEach((d: any) => {
+      const txid = d.data.txid;
+      if (!nodeUniqueMap.has(txid)) {
+        nodeUniqueMap.set(txid, d);
         nodePairs.push({
           source: d.parent,
           target: d,
           initial: true
         });
       } else {
-        const existingNode = nodeUniqueMap.get(id);
+        const existingNode = nodeUniqueMap.get(txid);
         const parentNode = d.parent;
       
         if (existingNode.depth < d.depth) {
-          nodeUniqueMap.set(id, d);
+          nodeUniqueMap.set(txid, d);
           nodePairs.forEach((node: any) => {
-            if (node.target.data.txid === id) {
+            if (node.target.data.txid === txid) {
               node.target = d;
               node.initial = false;
               if (node.source.children) {
-                node.source.children = node.source.children.filter((child: any) => child.data.txid !== id);
+                node.source.children = node.source.children.filter((child: any) => child.data.txid !== txid);
                 if (node.source.children.length === 0) {
                   node.source.children = null;
                 };
@@ -1024,10 +1031,10 @@ export class GraphComponent implements OnInit {
             initial: false
           });
 
-          parentNode.children = parentNode.children.filter((child: any) => child.data.txid !== id);
+          parentNode.children = parentNode.children.filter((child: any) => child.data.txid !== txid);
 
           if (parentNode.children.length === 0) {
-            parentNode.children = null;
+            parentNode.children = undefined;
           };
         };
       };
@@ -1230,7 +1237,7 @@ export class GraphComponent implements OnInit {
           txid: 'hidden'
         });
 
-        if (node.data.vinTxids.length > 0 && !flags.hiddenNodeAdded) {
+        if (node.data.vinTxids && node.data.vinTxids.length > 0 && !flags.hiddenNodeAdded) {
           hiddenNode.parent = node;
           hiddenNode.children = subsequentGroups;
           //hiddenNode.depth = depth - 1;

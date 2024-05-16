@@ -13,7 +13,7 @@ export class DataConversionService {
 
   private grouping: boolean = false;
   private uniqueTxoId: number = 1;
-  private threshold: number = 3;
+  private threshold: number = 5;
   private totalNumTransactionsRetrieved: number = -1; // -1 to exclude root transaction
 
   constructor(
@@ -25,6 +25,7 @@ export class DataConversionService {
     if (this.dataRetrievalService.url !== 'http://localhost:5000/api/') {
       transaction = this.randomGenerateVinGeolocation(transaction);
     }
+
     const transactionHierarchy = this.createTransactionHierarchy(txid, transaction, parentTxo);
     this.totalNumTransactionsRetrieved += 1;
     return transactionHierarchy;
@@ -90,11 +91,11 @@ export class DataConversionService {
     for (const geoKey of sortedVinKeys) {
       const vinList = groupedVin[geoKey];
       const vinTxids = vinList.map(vin => vin.txid);
-      const values = vinList.map(vin => parseInt(vin.value));
-      const totalValue = values.reduce((a, b) => a + b, 0);
-      const minValue = Math.min(...values);
-      const maxValue = Math.max(...values);
-      const medianValue = median(values)
+      const values = vinList.map(vin => Number(vin.value));
+      const totalValue = values.reduce((a, b) => a + b, 0).toFixed(8);
+      const minValue = Math.min(...values).toFixed(8);
+      const maxValue = Math.max(...values).toFixed(8);
+      const medianValue = median(values).toFixed(8);
 
       const supervisedAlertProbabilities = vinList.map(vin => vin.supervised_alert_probability);
       const numSuspicious = supervisedAlertProbabilities.filter(proba => proba > 0.5).length;
@@ -102,7 +103,7 @@ export class DataConversionService {
       const maxFraudProba = (Math.max(...supervisedAlertProbabilities)*100).toFixed(2);
       const medianFraudProba = (median(supervisedAlertProbabilities)*100).toFixed(2);
 
-      const displayData: { [key: string]: any } = {
+      const displayData: { [key: string]: number | string } = {
         'Geolocation': iso3311a2.getCountry(geoKey),
         'Number of Suspicious Inputs': numSuspicious,
         'Total Inputs': vinList.length,
@@ -133,7 +134,7 @@ export class DataConversionService {
     const txNode = {
       'txid': txid,
       'time': transaction.time,
-      'children': children // including both inputs and outputs (outputs should be manually handled in d3)
+      'children': children
     };
 
     const d3TxNode = this.convertToD3Hierarchy(txNode);
@@ -285,7 +286,7 @@ export class DataConversionService {
       }
       
       for (const [geoKey, geoTxoStarter] of Object.entries(geoTxoGroups)) {
-        const numStartingTx: number = 2;
+        const numStartingTx: number = 3;
         const chunks: any[][] = [];
         for (let j = 0; j < geoTxoStarter.length; j += numStartingTx) {
           chunks.push(geoTxoStarter.slice(j, j + numStartingTx));
@@ -431,6 +432,10 @@ export class DataConversionService {
     for (const vin of transaction.vin) {
       const randomGeo =  Math.floor(Math.random() * geolocationsCandidates.length);
       vin.geolocation = geolocationsCandidates[randomGeo];
+    }
+    for (const vout of transaction.vout) {
+      const randomGeo =  Math.floor(Math.random() * geolocationsCandidates.length);
+      vout.geolocation = geolocationsCandidates[randomGeo];
     }
     return transaction;
   }
